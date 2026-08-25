@@ -194,11 +194,13 @@ export default function ConsultationSpace() {
         toast.error("Could not access camera/mic. Running call without your stream.");
       }
 
-      const socketUrl = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-        ? "http://localhost:5000"
-        : window.location.origin;
+      const socketUrl =
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1"
+    ? "http://localhost:5000"
+    : "https://medicareai-backend-lp1l.onrender.com";
 
-      const socket = io(socketUrl);
+const socket = io(socketUrl);
       socketRef.current = socket;
 
       socket.emit("join-room", {
