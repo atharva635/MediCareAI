@@ -1,0 +1,237 @@
+.assessment-layout {
+  min-height: 100vh;
+  background-color: #050814;
+}
+
+.assessment-main-area {
+  margin-left: 260px;
+  padding: 1px 0 40px 0;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.assessment-content {
+  padding: 0 24px;
+  max-width: 960px;
+  margin: 20px auto 0 auto;
+}
+
+.assessment-form-card {
+  padding: 36px;
+  background: rgba(15, 23, 42, 0.4);
+}
+
+.assessment-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 24px;
+  margin-bottom: 28px;
+}
+
+.header-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  background: rgba(13, 148, 136, 0.1);
+  border: 1px solid rgba(13, 148, 136, 0.25);
+  color: #2dd4bf;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 15px rgba(13, 148, 136, 0.2);
+}
+
+.header-icon {
+  font-size: 1.5rem;
+}
+
+.assessment-header h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #f3f4f6;
+  margin: 0;
+}
+
+.assessment-header p {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  margin: 4px 0 0 0;
+}
+
+.assessment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.form-row-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 16px;
+}
+
+.form-select-custom {
+  appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg fill='none' stroke='%239ca3af' stroke-width='2' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'><path stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5'></path></svg>");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px;
+  padding-right: 40px;
+}
+
+.symptoms-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.section-label {
+  margin-bottom: 4px;
+}
+
+.symptoms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.symptom-card {
+  padding: 16px;
+  cursor: pointer;
+  background: rgba(15, 23, 42, 0.3);
+  border-radius: 12px;
+}
+
+.symptom-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.symptom-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #e5e7eb;
+}
+
+.custom-check-indicator {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.symptom-card.selected {
+  border-color: rgba(13, 148, 136, 0.4);
+  background: rgba(13, 148, 136, 0.06);
+}
+
+.symptom-card.selected .custom-check-indicator {
+  background: #0d9488;
+  border-color: #0d9488;
+}
+
+.symptom-desc {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin: 6px 0 0 0;
+}
+
+.live-risk-simulator {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 24px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.05) 0%, rgba(15, 23, 42, 0.5) 100%);
+  border-color: rgba(13, 148, 136, 0.15);
+}
+
+.risk-sim-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.sim-icon {
+  font-size: 1.6rem;
+  color: #06b6d4;
+}
+
+.risk-sim-header h4 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #f3f4f6;
+  margin: 0;
+}
+
+.risk-sim-header p {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin: 2px 0 0 0;
+}
+
+.risk-sim-result {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.sim-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sim-risk-badge {
+  font-size: 0.8rem;
+  padding: 6px 16px;
+}
+
+.form-textarea-custom {
+  width: 100%;
+  padding: 14px 16px;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  color: #f3f4f6;
+  font-size: 0.95rem;
+  transition: all 0.25s ease;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.form-textarea-custom:focus {
+  outline: none;
+  border-color: #0d9488;
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2);
+  background: rgba(15, 23, 42, 0.7);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-assessment-submit {
+  width: auto;
+  min-width: 200px;
+}
+
+@media (max-width: 768px) {
+  .form-row-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,52 +1,63 @@
 import mongoose from "mongoose";
 
-const userSchema = new mongoose.Schema(
-  {
-    fullName: {
-      type: String,
-      required: [true, "Full name is required"],
-      trim: true,
-    },
-
-    email: {
-      type: String,
-      required: [true, "Email is required"],
-      unique: true,
-      lowercase: true,
-      trim: true,
-    },
-
-    password: {
-      type: String,
-      required: [true, "Password is required"],
-      minlength: 6,
-    },
-
-    phone: {
-      type: String,
-      default: "",
-    },
-
-    age: {
-      type: Number,
-    },
-
-    gender: {
-      type: String,
-      enum: ["Male", "Female", "Other"],
-    },
-
-    role: {
-      type: String,
-      enum: ["patient", "doctor", "admin"],
-      default: "patient",
-    },
+const userSchema = new mongoose.Schema({
+  fullName: {
+    type: String,
+    required: true,
   },
-  {
-    timestamps: true,
-  }
-);
 
-const User = mongoose.model("User", userSchema);
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+
+  password: {
+    type: String,
+    required: true,
+  },
+
+  role: {
+    type: String,
+    enum: ["patient", "doctor", "consultant"],
+    default: "patient",
+  },
+  specialization: {
+    type: String,
+    default: "",
+  },
+  experience: {
+    type: Number,
+    default: 0,
+  },
+  location: {
+    type: String,
+    default: "",
+  },
+  consultationFee: {
+    type: Number,
+    default: 0,
+  },
+  about: {
+    type: String,
+    default: "",
+  },
+  rating: {
+    type: Number,
+    default: 4.8,
+  },
+  isOnline: {
+    type: Boolean,
+    default: false,
+  },
+  availability: {
+    type: Map,
+    of: [String],
+    default: {},
+  },
+});
+
+const User =
+  mongoose.models.User || mongoose.model("User", userSchema);
 
 export default User;

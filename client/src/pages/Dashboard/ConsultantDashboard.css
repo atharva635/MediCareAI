@@ -1,0 +1,223 @@
+.consultant-dashboard-layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100vw;
+  background-color: #050814;
+  overflow-x: hidden;
+}
+
+.consultant-dashboard-main-area {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  overflow-y: auto;
+}
+
+.consultant-dashboard-content {
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.consultant-welcome-banner {
+  padding: 24px;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.4) 0%, rgba(13, 148, 136, 0.05) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+}
+
+.consultant-welcome-banner h1 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #f3f4f6;
+  margin-bottom: 6px;
+}
+
+.consultant-welcome-banner p {
+  color: #9ca3af;
+  font-size: 0.95rem;
+}
+
+.consultant-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.consultant-stat-card {
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.stat-icon-wrapper {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+}
+
+.total-icon {
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  color: #818cf8;
+}
+
+.pending-icon {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+.completed-icon {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  color: #f3f4f6;
+  font-weight: 800;
+  margin-top: 2px;
+}
+
+.referred-patients-section {
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+}
+
+.section-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #f3f4f6;
+  margin-bottom: 20px;
+}
+
+.no-cases-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 50px 20px;
+  color: #6b7280;
+  text-align: center;
+  gap: 12px;
+}
+
+.no-cases-icon {
+  font-size: 2.2rem;
+  color: #374151;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.consultant-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.consultant-table th {
+  padding: 14px 16px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.consultant-table td {
+  padding: 16px;
+  font-size: 0.9rem;
+  color: #cbd5e1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.consultant-table-row {
+  transition: all 0.2s ease;
+}
+
+.consultant-table-row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.patient-primary-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.patient-name-cell {
+  font-weight: 600;
+  color: #f3f4f6;
+}
+
+.patient-email-cell {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.referral-reason-cell {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.risk-badge-cell {
+  font-size: 0.75rem;
+}
+
+.referral-status-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.referral-status-label.pending { color: #f59e0b; }
+.referral-status-label.reviewed { color: #10b981; }
+
+.btn-review-case {
+  padding: 8px 14px;
+  background: rgba(13, 148, 136, 0.1);
+  border: 1px solid rgba(13, 148, 136, 0.25);
+  color: #2dd4bf;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-review-case:hover {
+  background: #0d9488;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(13, 148, 136, 0.3);
+}

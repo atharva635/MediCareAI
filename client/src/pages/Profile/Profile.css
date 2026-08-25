@@ -1,0 +1,130 @@
+.profile-layout {
+  min-height: 100vh;
+  background-color: #050814;
+}
+
+.profile-main-area {
+  margin-left: 260px;
+  padding: 1px 0 40px 0;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.profile-content {
+  padding: 0 24px;
+  max-width: 800px;
+  margin: 30px auto 0 auto;
+}
+
+.profile-details-card {
+  padding: 40px;
+  background: rgba(15, 23, 42, 0.4);
+}
+
+.profile-card-header {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 30px;
+  margin-bottom: 30px;
+}
+
+.profile-avatar-large {
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #0d9488 0%, #06b6d4 100%);
+  color: #ffffff;
+  font-size: 2.2rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 20px rgba(13, 148, 136, 0.35);
+}
+
+.profile-meta-title h2 {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #f3f4f6;
+  margin: 0 0 8px 0;
+  letter-spacing: -0.02em;
+}
+
+.profile-role-badge {
+  font-size: 0.8rem;
+  padding: 4px 14px;
+}
+
+.profile-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 36px;
+}
+
+.profile-info-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.profile-info-item .info-icon {
+  font-size: 1.6rem;
+  color: #0d9488;
+}
+
+.profile-info-item .info-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 4px;
+}
+
+.profile-info-item .info-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #e5e7eb;
+  margin: 0;
+  word-break: break-all;
+}
+
+.profile-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 24px;
+}
+
+.logout-btn-large {
+  background: rgba(244, 63, 94, 0.08);
+  border: 1px solid rgba(244, 63, 94, 0.15);
+  color: #fda4af;
+  padding: 12px 28px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.logout-btn-large:hover {
+  background: rgba(244, 63, 94, 0.15);
+  border-color: rgba(244, 63, 94, 0.35);
+  color: #ff859b;
+  box-shadow: 0 4px 15px rgba(244, 63, 94, 0.2);
+}
+
+@media (max-width: 640px) {
+  .profile-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}

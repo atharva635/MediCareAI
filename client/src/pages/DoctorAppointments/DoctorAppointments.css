@@ -1,0 +1,186 @@
+.doctor-appointments-layout {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.doctor-appointments-main-area {
+  flex: 1;
+  width: calc(100% - 280px);
+  margin-left: 280px;
+  min-width: 0;
+}
+
+.doctor-appointments-content {
+  width: 100%;
+  padding: 24px 32px;
+  box-sizing: border-box;
+}
+
+.doctor-appointments-banner {
+  padding: 24px;
+  border-radius: 20px;
+  background: rgba(30, 41, 59, 0.4);
+}
+
+.doctor-appointments-banner h1 {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #f3f4f6;
+  margin: 0;
+}
+
+.doctor-appointments-banner p {
+  font-size: 0.88rem;
+  color: #94a3b8;
+  margin: 4px 0 0;
+}
+
+.doctor-appointments-tabs {
+  display: flex;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 12px;
+}
+
+.doctor-appointments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.doctor-appointment-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 16px;
+  background: rgba(30, 41, 59, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.2s ease;
+}
+
+.doctor-appointment-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(45, 212, 191, 0.15);
+}
+
+.card-header-patient {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.patient-icon-avatar {
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.patient-meta-names h3 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #f3f4f6;
+  margin: 0;
+}
+
+.patient-meta-names p {
+  font-size: 0.82rem;
+  color: #94a3b8;
+  margin: 2px 0 0;
+}
+
+.btn-start-consult {
+  flex: 1.5;
+  background: #2dd4bf;
+  color: #0f172a;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  transition: all 0.2s ease;
+}
+
+.btn-start-consult:hover {
+  background: #14b8a6;
+}
+
+.btn-complete-appt {
+  flex: 1;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.88rem;
+  transition: all 0.2s ease;
+}
+
+.btn-complete-appt:hover {
+  background: rgba(16, 185, 129, 0.15);
+}
+
+.btn-accept-request {
+  flex: 1.5;
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  transition: all 0.2s ease;
+}
+
+.btn-accept-request:hover {
+  background: #059669;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+.btn-reject-request {
+  flex: 1;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.88rem;
+  transition: all 0.2s ease;
+}
+
+.btn-reject-request:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.symptom-tag-small {
+  background: rgba(14, 165, 233, 0.12);
+  border: 1px solid rgba(14, 165, 233, 0.18);
+  color: #38bdf8;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 12px;
+  text-transform: capitalize;
+}

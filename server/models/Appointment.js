@@ -1,0 +1,88 @@
+import mongoose from "mongoose";
+
+const appointmentSchema = new mongoose.Schema(
+  {
+    patient: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+
+    doctor: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+
+    appointmentDate: {
+      type: String,
+      required: true,
+    },
+
+    appointmentTime: {
+      type: String,
+      required: true,
+    },
+
+    amount: {
+      type: Number,
+      required: true,
+    },
+
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "paid", "failed"],
+      default: "pending",
+    },
+
+    appointmentStatus: {
+      type: String,
+      enum: ["pending", "confirmed", "cancelled", "completed"],
+      default: "pending",
+    },
+
+    symptoms: {
+      type: [String],
+      default: [],
+    },
+
+    medicalNote: {
+      type: String,
+      default: "",
+    },
+
+    doctorDecision: {
+      type: String,
+      enum: ["pending", "accepted", "rejected"],
+      default: "pending",
+    },
+
+    rejectionReason: {
+      type: String,
+      default: "",
+    },
+    doctorNotes: {
+      type: String,
+      default: "",
+    },
+    prescriptions: {
+      type: String,
+      default: "",
+    },
+    followUp: {
+      type: String,
+      default: "",
+    },
+    referredTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    referralReason: {
+      type: String,
+      default: "",
+    },
+  },
+  { timestamps: true }
+);
+
+export default mongoose.model("Appointment", appointmentSchema);
