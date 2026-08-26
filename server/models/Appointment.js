@@ -81,6 +81,23 @@ const appointmentSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    aiIntake: {
+      chiefComplaint: { type: String, default: "" },
+      duration: { type: String, default: "" },
+      symptoms: { type: [String], default: [] },
+      history: { type: String, default: "" },
+      medications: { type: String, default: "" },
+      severity: { type: String, default: "" },
+      riskLevel: { type: String, default: "" },
+      summary: { type: String, default: "" },
+      chatHistory: [
+        {
+          sender: { type: String },
+          text: { type: String },
+          timestamp: { type: Date, default: Date.now }
+        }
+      ]
+    },
   },
   { timestamps: true }
 );

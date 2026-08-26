@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { 
@@ -31,6 +31,27 @@ export default function BookingModal({ doctor, onClose }) {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [symptoms, setSymptoms] = useState([]);
   const [medicalNote, setMedicalNote] = useState("");
+
+  // AI Intake Chat states
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInputText, setChatInputText] = useState("");
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const [isAiTyping, setIsAiTyping] = useState(false);
+  const chatEndRef = useRef(null);
+
+  const intakeQuestions = [
+    "What symptoms are you experiencing?",
+    "Since when (duration) have you been feeling this way?",
+    "Do you have any previous medical history (chronic conditions, allergies, or past surgeries)?",
+    "Are you currently taking any daily medicines or treatments?"
+  ];
+
+  // Auto-scroll chat area
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollTop = chatEndRef.current.scrollHeight;
+    }
+  }, [chatMessages, isAiTyping]);
 
   // Get date range limits (Today to Today + 7 days)
   const getTodayString = () => {
@@ -83,14 +104,61 @@ export default function BookingModal({ doctor, onClose }) {
       return;
     }
     setStep("symptoms");
+    if (chatMessages.length === 0) {
+      setIsAiTyping(true);
+      setTimeout(() => {
+        setChatMessages([
+          {
+            sender: "ai",
+            text: `Hello! I am your MediCare AI Intake Assistant. To help Dr. ${doctor.fullName} prepare for your virtual consultation, please answer a few quick questions.\n\nFirst: ${intakeQuestions[0]}`,
+            timestamp: new Date()
+          }
+        ]);
+        setIsAiTyping(false);
+      }, 800);
+    }
   };
 
-  const handleToggleSymptom = (sym) => {
-    if (symptoms.includes(sym)) {
-      setSymptoms(symptoms.filter((s) => s !== sym));
-    } else {
-      setSymptoms([...symptoms, sym]);
-    }
+  const handleSendChatMessage = (e) => {
+    e.preventDefault();
+    if (!chatInputText.trim()) return;
+
+    const patientMsg = {
+      sender: "patient",
+      text: chatInputText.trim(),
+      timestamp: new Date()
+    };
+
+    setChatMessages((prev) => [...prev, patientMsg]);
+    setChatInputText("");
+    setIsAiTyping(true);
+
+    const nextIndex = questionIndex + 1;
+    setQuestionIndex(nextIndex);
+
+    setTimeout(() => {
+      if (nextIndex < intakeQuestions.length) {
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            sender: "ai",
+            text: intakeQuestions[nextIndex],
+            timestamp: new Date()
+          }
+        ]);
+      } else {
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            sender: "ai",
+            text: "Thank you! I have successfully processed your intake data. Please click 'Send Appointment Request' below to submit this summary to Dr. " + doctor.fullName + ".",
+            timestamp: new Date()
+          }
+        ]);
+        setQuestionIndex(-1); // Conversation complete
+      }
+      setIsAiTyping(false);
+    }, 1000);
   };
 
   const handleSendRequest = async () => {
@@ -100,8 +168,9 @@ export default function BookingModal({ doctor, onClose }) {
         doctor: doctor._id,
         appointmentDate: selectedDate,
         appointmentTime: selectedTime,
-        symptoms,
-        medicalNote,
+        symptoms: [],
+        medicalNote: "",
+        aiChatHistory: chatMessages,
       });
 
       if (res.data.success) {
@@ -239,46 +308,53 @@ export default function BookingModal({ doctor, onClose }) {
           {/* STEP 2: SYMPTOMS & NOTES */}
           {step === "symptoms" && (
             <div className="step-symptoms-layout fade-in">
-              <div className="symptoms-selection-box glass-panel" style={{ padding: "18px" }}>
-                <label className="booking-label">
-                  What problems / symptoms are you facing?
-                </label>
-                <div className="symptoms-checkbox-grid">
-                  {["Chest pain", "Fever", "Cough", "Breathing difficulty", "Headache"].map((sym) => {
-                    const isChecked = symptoms.includes(sym);
-                    return (
-                      <button
-                        type="button"
-                        key={sym}
-                        className={`symptom-checkbox-pill ${isChecked ? "selected" : ""}`}
-                        onClick={() => handleToggleSymptom(sym)}
-                      >
-                        {isChecked ? "✓ " : "+ "} {sym}
-                      </button>
-                    );
-                  })}
+              <div className="chat-badge-info">
+                🤖 <strong>MediCare AI Triage Intake</strong> is evaluating your concerns. Please answer the questions below.
+              </div>
+              
+              <div className="intake-chat-container">
+                <div className="intake-chat-messages" ref={chatEndRef}>
+                  {chatMessages.map((msg, index) => (
+                    <div key={index} className={`chat-message ${msg.sender}`}>
+                      {msg.text.split("\n").map((line, lIdx) => (
+                        <p key={lIdx} style={{ margin: "4px 0" }}>{line}</p>
+                      ))}
+                    </div>
+                  ))}
+                  {isAiTyping && (
+                    <div className="chat-message typing">
+                      <span>●</span><span>●</span><span>●</span> AI is typing...
+                    </div>
+                  )}
                 </div>
+
+                {questionIndex !== -1 ? (
+                  <form onSubmit={handleSendChatMessage} className="intake-chat-input-area">
+                    <input
+                      type="text"
+                      className="intake-chat-input"
+                      placeholder="Type your response here..."
+                      value={chatInputText}
+                      onChange={(e) => setChatInputText(e.target.value)}
+                      disabled={isAiTyping}
+                    />
+                    <button
+                      type="submit"
+                      className="btn-chat-send"
+                      disabled={isAiTyping || !chatInputText.trim()}
+                    >
+                      Send
+                    </button>
+                  </form>
+                ) : null}
               </div>
 
-              <div className="medical-note-box glass-panel" style={{ marginTop: "16px", padding: "18px" }}>
-                <label className="booking-label">
-                  Additional details or medical note:
-                </label>
-                <textarea
-                  className="booking-textarea-input"
-                  placeholder="e.g. Having fever since 2 days, mild chest pain during deep breath..."
-                  rows="4"
-                  value={medicalNote}
-                  onChange={(e) => setMedicalNote(e.target.value)}
-                />
-              </div>
-
-              <div className="payment-actions" style={{ marginTop: "24px" }}>
+              <div className="payment-actions" style={{ marginTop: "20px" }}>
                 <button
                   type="button"
                   onClick={handleSendRequest}
                   className="btn-primary-custom btn-booking-action"
-                  disabled={paymentLoading}
+                  disabled={paymentLoading || questionIndex !== -1}
                 >
                   {paymentLoading ? (
                     <>
@@ -292,7 +368,11 @@ export default function BookingModal({ doctor, onClose }) {
                 <button
                   type="button"
                   className="btn-secondary-custom btn-booking-cancel"
-                  onClick={() => setStep("select")}
+                  onClick={() => {
+                    setStep("select");
+                    setChatMessages([]);
+                    setQuestionIndex(0);
+                  }}
                   disabled={paymentLoading}
                 >
                   Back to Slots

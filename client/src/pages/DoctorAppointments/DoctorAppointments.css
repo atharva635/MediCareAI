@@ -184,3 +184,51 @@
   border-radius: 12px;
   text-transform: capitalize;
 }
+
+/* Severity badges */
+.severity-mild {
+  background: rgba(16, 185, 129, 0.12) !important;
+  color: #10b981 !important;
+  border: 1px solid rgba(16, 185, 129, 0.2) !important;
+}
+.severity-moderate {
+  background: rgba(245, 158, 11, 0.12) !important;
+  color: #f59e0b !important;
+  border: 1px solid rgba(245, 158, 11, 0.2) !important;
+}
+.severity-severe {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #ef4444 !important;
+  border: 1px solid rgba(239, 68, 68, 0.2) !important;
+}
+
+/* Risk level badges */
+.risk-low {
+  background: rgba(16, 185, 129, 0.12) !important;
+  color: #10b981 !important;
+  border: 1px solid rgba(16, 185, 129, 0.2) !important;
+}
+.risk-medium {
+  background: rgba(245, 158, 11, 0.12) !important;
+  color: #f59e0b !important;
+  border: 1px solid rgba(245, 158, 11, 0.2) !important;
+}
+.risk-high {
+  background: rgba(244, 63, 94, 0.12) !important;
+  color: #f43f5e !important;
+  border: 1px solid rgba(244, 63, 94, 0.2) !important;
+}
+.risk-critical {
+  background: rgba(220, 38, 38, 0.18) !important;
+  color: #dc2626 !important;
+  border: 1px solid rgba(220, 38, 38, 0.3) !important;
+  font-weight: 700;
+  animation: pulseRisk 2s infinite;
+}
+
+@keyframes pulseRisk {
+  0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+}
+

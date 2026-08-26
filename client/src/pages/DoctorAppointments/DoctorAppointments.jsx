@@ -12,6 +12,7 @@ export default function DoctorAppointments() {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("upcoming"); // 'upcoming' or 'past'
+  const [expandedIntakeId, setExpandedIntakeId] = useState(null);
 
   useEffect(() => {
     loadAppointments();
@@ -148,20 +149,101 @@ export default function DoctorAppointments() {
                     </div>
                   </div>
 
-                  {appt.symptoms && appt.symptoms.length > 0 && (
-                    <div className="appt-symptoms-list border-top" style={{ padding: "10px 0" }}>
-                      <strong style={{ fontSize: "0.85rem", color: "#94a3b8" }}>Symptoms:</strong>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "4px" }}>
-                        {appt.symptoms.map(s => <span key={s} className="symptom-tag-small">{s}</span>)}
+                  {appt.aiIntake ? (
+                    <div className="appt-ai-intake-report border-top" style={{ padding: "12px 0" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                        <span style={{ fontSize: "0.85rem", fontWeight: "700", color: "#38bdf8" }}>🤖 AI Intake Report</span>
+                        <div style={{ display: "flex", gap: "6px" }}>
+                          <span className={`status-badge severity-${appt.aiIntake.severity?.toLowerCase()}`} style={{ fontSize: "0.75rem" }}>
+                            {appt.aiIntake.severity} Severity
+                          </span>
+                          <span className={`status-badge risk-${appt.aiIntake.riskLevel?.toLowerCase()}`} style={{ fontSize: "0.75rem" }}>
+                            {appt.aiIntake.riskLevel} Risk
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  )}
 
-                  {appt.medicalNote && (
-                    <div className="appt-note border-top" style={{ padding: "10px 0", fontSize: "0.85rem", color: "#94a3b8" }}>
-                      <strong>Medical Note:</strong>
-                      <p style={{ margin: "4px 0 0", color: "#cbd5e1" }}>"{appt.medicalNote}"</p>
+                      <div style={{ fontSize: "0.85rem", color: "#e2e8f0", marginBottom: "6px" }}>
+                        <strong>Chief Complaint:</strong> {appt.aiIntake.chiefComplaint}
+                      </div>
+
+                      {appt.aiIntake.summary && (
+                        <div style={{ fontSize: "0.85rem", color: "#94a3b8", marginBottom: "6px" }}>
+                          <strong>AI Summary:</strong> <span style={{ color: "#cbd5e1" }}>"{appt.aiIntake.summary}"</span>
+                        </div>
+                      )}
+
+                      {(appt.aiIntake.history || appt.aiIntake.medications) && (
+                        <div style={{ background: "rgba(15, 23, 42, 0.25)", padding: "8px", borderRadius: "6px", fontSize: "0.8rem", color: "#94a3b8", marginBottom: "8px" }}>
+                          {appt.aiIntake.history && <div><strong>History:</strong> {appt.aiIntake.history}</div>}
+                          {appt.aiIntake.medications && <div><strong>Medications:</strong> {appt.aiIntake.medications}</div>}
+                        </div>
+                      )}
+
+                      {appt.aiIntake.chatHistory && appt.aiIntake.chatHistory.length > 0 && (
+                        <div>
+                          <button
+                            onClick={() => setExpandedIntakeId(expandedIntakeId === appt._id ? null : appt._id)}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "#38bdf8",
+                              fontSize: "0.8rem",
+                              cursor: "pointer",
+                              padding: 0,
+                              fontWeight: "600",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px"
+                            }}
+                          >
+                            {expandedIntakeId === appt._id ? "Hide Chat Log ▲" : "View Pre-Intake Chat Log ▼"}
+                          </button>
+                          
+                          {expandedIntakeId === appt._id && (
+                            <div style={{
+                              maxHeight: "180px",
+                              overflowY: "auto",
+                              background: "rgba(15, 23, 42, 0.4)",
+                              border: "1px solid rgba(255, 255, 255, 0.05)",
+                              borderRadius: "8px",
+                              padding: "10px",
+                              marginTop: "8px",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "8px"
+                            }}>
+                              {appt.aiIntake.chatHistory.map((chat, cIdx) => (
+                                <div key={cIdx} style={{ fontSize: "0.78rem" }}>
+                                  <strong style={{ color: chat.sender === "ai" ? "#38bdf8" : "#10b981" }}>
+                                    {chat.sender === "ai" ? "AI Intake" : "Patient"}:
+                                  </strong>
+                                  <p style={{ margin: "2px 0 0", color: "#cbd5e1" }}>{chat.text}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
+                  ) : (
+                    <>
+                      {appt.symptoms && appt.symptoms.length > 0 && (
+                        <div className="appt-symptoms-list border-top" style={{ padding: "10px 0" }}>
+                          <strong style={{ fontSize: "0.85rem", color: "#94a3b8" }}>Symptoms:</strong>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "4px" }}>
+                            {appt.symptoms.map(s => <span key={s} className="symptom-tag-small">{s}</span>)}
+                          </div>
+                        </div>
+                      )}
+
+                      {appt.medicalNote && (
+                        <div className="appt-note border-top" style={{ padding: "10px 0", fontSize: "0.85rem", color: "#94a3b8" }}>
+                          <strong>Medical Note:</strong>
+                          <p style={{ margin: "4px 0 0", color: "#cbd5e1" }}>"{appt.medicalNote}"</p>
+                        </div>
+                      )}
+                    </>
                   )}
 
                   <div className="card-payment-fee-status border-top" style={{ paddingTop: "12px" }}>

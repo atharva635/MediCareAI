@@ -1,6 +1,7 @@
 import Appointment from "../models/Appointment.js";
 import User from "../models/User.js";
 import { sendEmailNotification } from "../services/emailService.js";
+import { analyzeIntakeChat } from "../services/aiService.js";
 
 // Helper: Normalize time string to uniform "HH:MM AM/PM" format for consistent comparisons
 const formatTime = (timeStr) => {
@@ -52,7 +53,7 @@ const minutesToTimeString = (minutes) => {
 // 1. Create Appointment (Patient only)
 export const createAppointment = async (req, res) => {
   try {
-    const { doctor, appointmentDate, appointmentTime, symptoms, medicalNote } = req.body;
+    const { doctor, appointmentDate, appointmentTime, symptoms, medicalNote, aiChatHistory } = req.body;
 
     if (!doctor || !appointmentDate || !appointmentTime) {
       return res.status(400).json({
@@ -90,6 +91,26 @@ export const createAppointment = async (req, res) => {
 
     const consultationFee = doctorUser.consultationFee || 0;
 
+    // AI Intake Processing
+    let aiIntakeResult = null;
+    let computedSymptoms = symptoms || [];
+    let computedMedicalNote = medicalNote || "";
+
+    if (aiChatHistory && Array.isArray(aiChatHistory) && aiChatHistory.length > 0) {
+      console.log("🤖 Running AI Intake Analysis via Groq...");
+      aiIntakeResult = await analyzeIntakeChat(aiChatHistory);
+      if (aiIntakeResult) {
+        if (aiIntakeResult.symptoms && Array.isArray(aiIntakeResult.symptoms)) {
+          // Merge AI-detected symptoms into list, avoiding duplicates
+          const uniqueSyms = new Set([...computedSymptoms, ...aiIntakeResult.symptoms]);
+          computedSymptoms = Array.from(uniqueSyms);
+        }
+        if (aiIntakeResult.summary) {
+          computedMedicalNote = aiIntakeResult.summary + (computedMedicalNote ? `\n\nPatient Note: ${computedMedicalNote}` : "");
+        }
+      }
+    }
+
     const appointment = new Appointment({
       patient: req.user.id,
       doctor,
@@ -99,8 +120,19 @@ export const createAppointment = async (req, res) => {
       paymentStatus: "pending",
       appointmentStatus: "pending",
       doctorDecision: "pending",
-      symptoms: symptoms || [],
-      medicalNote: medicalNote || "",
+      symptoms: computedSymptoms,
+      medicalNote: computedMedicalNote,
+      aiIntake: aiIntakeResult ? {
+        chiefComplaint: aiIntakeResult.chiefComplaint || "",
+        duration: aiIntakeResult.duration || "",
+        symptoms: aiIntakeResult.symptoms || [],
+        history: aiIntakeResult.history || "",
+        medications: aiIntakeResult.medications || "",
+        severity: aiIntakeResult.severity || "",
+        riskLevel: aiIntakeResult.riskLevel || "",
+        summary: aiIntakeResult.summary || "",
+        chatHistory: aiChatHistory,
+      } : undefined,
     });
 
     await appointment.save();
