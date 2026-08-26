@@ -33,7 +33,12 @@ sequenceDiagram
     Consultant->>Server: Retrieve Triage Files
     Consultant->>Server: Add Notes & Refer to Doctor (e.g., Cardiologist)
     
-    Patient->>Server: Browse Doctor & Request Appointment Slot
+    Patient->>Server: Engage in AI Intake Chatbot Interview
+    Patient->>Server: Browse Doctor & Request Appointment (Stores Chat Logs)
+    Server->>AI: Parse Intake Conversation Transcript
+    AI-->>Server: Output Structured Patient Profile JSON
+    
+    Doctor->>Server: Review AI Intake Report (Risk & Severity)
     Doctor->>Server: Approve/Confirm Appointment Slot
     
     Patient->>Server: Initiate Payment Request
@@ -55,12 +60,15 @@ sequenceDiagram
 
 ### 👤 Patient Workspace
 *   **AI Symptoms Triage:** Perform preliminary symptom analysis. Patients receive automated advice and risk-level categorization (Low, Medium, High, Critical) before seeing a physician.
+*   **Conversational AI Intake Agent:** When booking an appointment, patients complete a sequential, interactive chatbot interview gathering symptoms, duration, medical history, and medications.
 *   **Physician Directory:** Browse verified lists of doctors filtered by specializations, consultation fees, experience, ratings, and active availability.
 *   **Interactive Booking:** Select date/time slots with automatic conflict prevention (blocks overlapping schedules).
 *   **Secure Payment Integration:** Integrated checkouts utilizing the **Razorpay API** for processing session fees.
 *   **Virtual Ward & Chat:** Access virtual call chambers for high-fidelity audio/video calls and chat histories.
 
 ### 🥼 Doctor Portal
+*   **AI Intake Diagnostic Report:** Before confirming appointments, doctors can review a parsed clinical profile showing severity levels (Mild, Moderate, Severe), risk categories (Low, Medium, High, Critical), chief complaints, medications list, and medical history highlights.
+*   **Patient Chat Logs Accordion:** View exact pre-consultation transcripts between patients and the AI assistant to track symptoms context.
 *   **Patient Intake Dashboard:** View complete list of triaged patient files, diagnostic logs, and historical consultations.
 *   **Appointment Management:** Accept, decline, or complete upcoming appointments with inline reason logs.
 *   **Prescription Console:** Record consultation outcomes, write clinical notes, input prescriptions, specify follow-up instructions, or transfer patients to other specialists.
@@ -88,7 +96,7 @@ sequenceDiagram
 *   **Framework:** Express.js (v5)
 *   **Database:** MongoDB with Mongoose ODM
 *   **Realtime Signaling:** Socket.io
-*   **AI Engine:** Groq SDK (utilizing powerful open models like Llama-3/GPT-OSS via API)
+*   **AI Engine:** Groq SDK (utilizing `openai/gpt-oss-120b` for JSON-structured intake profiles)
 *   **Payment Processor:** Razorpay SDK
 *   **Notification Engine:** Resend API & Nodemailer (SMTP configs)
 
@@ -101,10 +109,10 @@ MediCareAI/
 ├── client/                     # Frontend Application
 │   ├── public/                 # Static Assets
 │   ├── src/
-│   │   ├── components/         # Shared Components (Sidebar, Navbar, Loader)
+│   │   ├── components/         # Shared Components (Sidebar, Navbar, Loader, BookingModal)
 │   │   ├── hooks/              # Custom React Hooks
 │   │   ├── layouts/            # Page layouts
-│   │   ├── pages/              # Module Workspaces (Dashboard, Consultation, Triage)
+│   │   ├── pages/              # Module Workspaces (Dashboard, Consultation, Triage, DoctorAppointments)
 │   │   ├── redux/              # Redux Slices (Auth, Active State)
 │   │   ├── routes/             # App Router with Role Protected Routes
 │   │   ├── services/           # Axios Base Instances & API Handlers
@@ -116,9 +124,9 @@ MediCareAI/
 │   ├── config/                 # MongoDB database adapter
 │   ├── controllers/            # Controller Handlers (Auth, Payments, AI, Appointments)
 │   ├── middleware/             # Route guards (JWT verification, Role validators)
-│   ├── models/                 # Mongoose Database Schemas
+│   ├── models/                 # Mongoose Database Schemas (User, Patient, Appointment)
 │   ├── routes/                 # Express REST Endpoints
-│   ├── services/               # Resend, Nodemailer, and Email Notification scripts
+│   ├── services/               # Resend, Nodemailer, and Groq AI parsing scripts
 │   ├── validations/            # Request payload sanity check schemas
 │   ├── app.js                  # Express middleware declarations
 │   ├── server.js               # Entry point (HTTP Server, Socket.io signaling configuration)
@@ -205,7 +213,7 @@ All requests are pre-configured to hit: `https://medicareai-backend-lp1l.onrende
 | **Auth** | `/api/auth/me` | `GET` | Retrieve logged-in user profile details | Bearer JWT |
 | **Patients**| `/api/patient` | `POST` | Submit triage details & intake symptom list | Patient |
 | **Patients**| `/api/patient/all` | `GET` | Fetch all records for the viewing workspace | Role Restricted |
-| **Appointments**| `/api/appointments` | `POST` | Book appointment slot | Patient |
+| **Appointments**| `/api/appointments` | `POST` | Book appointment slot. Accepts `aiChatHistory` in request body to trigger Groq parsing. | Patient |
 | **Appointments**| `/api/appointments/doctor`| `GET` | View appointments assigned to currently authenticated doctor | Doctor |
 | **Payments**| `/api/payments/order` | `POST` | Generate Razorpay order ID | Patient |
 | **Payments**| `/api/payments/verify`| `POST` | Confirm Razorpay cryptographic signature | Patient |
@@ -217,7 +225,22 @@ All requests are pre-configured to hit: `https://medicareai-backend-lp1l.onrende
 
 *   **`User`**: Manages authentication details, credentials, and roles (`patient`, `doctor`, `consultant`). Stores specialized metadata for doctors (specialization, experience, consulting fees, ratings, availability timetables).
 *   **`Patient`**: Handles symptom logs, triage outcomes, severity categories (`Low`, `Medium`, `High`, `Critical`), payment statuses, consultant referral notes, and doctor diagnosis details.
-*   **`Appointment`**: Connects patient and doctor models. Maintains date/time slots, amount, payment tracking, appointment statuses, and physician decisions (Pending/Accepted/Rejected).
+*   **`Appointment`**: Connects patient and doctor models. Maintains date/time slots, amount, payment tracking, appointment statuses, and physician decisions (Pending/Accepted/Rejected). Stores the structured `aiIntake` sub-document:
+    ```javascript
+    aiIntake: {
+      chiefComplaint: String,
+      duration: String,
+      symptoms: [String],
+      history: String,
+      medications: String,
+      severity: String,
+      riskLevel: String,
+      summary: String,
+      chatHistory: [
+        { sender: String, text: String, timestamp: Date }
+      ]
+    }
+    ```
 *   **`Message`**: Persists conversation texts sent during virtual consultation sessions alongside roomId tracking for active WebRTC rooms.
 *   **`Consultation`**: Represents active/completed direct communication tracks between patients and doctors.
 
@@ -226,6 +249,7 @@ All requests are pre-configured to hit: `https://medicareai-backend-lp1l.onrende
 ## 🔮 Roadmap & Future Enhancements
 
 As the platform is in active development, the following modules are planned:
+*   [x] **AI Pre-Consultation Intake Agent:** Implemented interactive pre-consultation chatbot interviewing patients and structuring reports.
 *   [ ] **Automated Prescription PDF:** Dynamically output signed digital prescriptions downloadable by patients.
 *   [ ] **Patient Health Dashboard Analytics:** Display symptom severity progression graphs using Chart.js.
 *   [ ] **AI Multi-turn Chat Records:** Save historic conversations with the Groq symptom triage chatbot.
