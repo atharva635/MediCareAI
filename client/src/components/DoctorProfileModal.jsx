@@ -38,7 +38,7 @@ export default function DoctorProfileModal({ doctor, onClose, onConsult }) {
             <div className="profile-stat-box">
               <RiMapPinLine className="stat-icon" />
               <span>Distance</span>
-              <strong>{doctor.distance !== undefined ? `${(doctor.distance / 1000).toFixed(1)}` : mockDistance} km away</strong>
+              <strong>{mockDistance} km away</strong>
             </div>
 
             <div className="profile-stat-box">
@@ -58,7 +58,7 @@ export default function DoctorProfileModal({ doctor, onClose, onConsult }) {
           <div className="doc-profile-section border-top">
             <h3>Practice Location</h3>
             <p className="location-text">
-              📍 Clinic address registered in <strong>{doctor.locationName || (typeof doctor.location === "string" ? doctor.location : "Ghaziabad")}</strong>.
+              📍 Clinic address registered in <strong>{doctor.location || "Ghaziabad"}</strong>.
             </p>
           </div>
 

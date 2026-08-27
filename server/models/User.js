@@ -30,21 +30,10 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
- location: {
-  type: {
+  location: {
     type: String,
-    enum: ["Point"],
-    default: "Point",
+    default: "",
   },
-  coordinates: {
-    type: [Number],
-    default: [0, 0],
-  },
-},
- locationName: {
-   type: String,
-   default: "",
- },
   consultationFee: {
     type: Number,
     default: 0,
@@ -67,7 +56,7 @@ const userSchema = new mongoose.Schema({
     default: {},
   },
 });
-userSchema.index({ location: "2dsphere" });
+
 const User =
   mongoose.models.User || mongoose.model("User", userSchema);
 
