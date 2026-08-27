@@ -72,7 +72,7 @@ export default function Register() {
               <input
                 type="text"
                 name="fullName"
-                placeholder={formData.role === "patient" ? "Jane Doe" : "Dr. John Doe"}
+                placeholder={formData.role === "patient" ? "Your Name" : "Dr. Name"}
                 value={formData.fullName}
                 onChange={handleChange}
                 required
@@ -88,7 +88,7 @@ export default function Register() {
               <input
                 type="email"
                 name="email"
-                placeholder={formData.role === "patient" ? "patient@medicare.ai" : "professional@medicare.ai"}
+                placeholder={formData.role === "patient" ? "patient@gmail.com" : "professional@gmail.com"}
                 value={formData.email}
                 onChange={handleChange}
                 required
