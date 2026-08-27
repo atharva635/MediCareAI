@@ -14,6 +14,12 @@ export const loginUser = async (data) => {
 
   return res;
 };
+export const updateLocation = async (latitude, longitude) => {
+  return await api.put("/auth/location", {
+    latitude,
+    longitude,
+  });
+};
 
 export const getCurrentUser = async () => {
   return await api.get("/auth/me");
@@ -23,8 +29,8 @@ export const getConsultants = async () => {
   return await api.get("/auth/consultants");
 };
 
-export const getDoctors = async () => {
-  return await api.get("/auth/doctors");
+export const getDoctors = async (params) => {
+  return await api.get("/auth/doctors", { params });
 };
 
 export const logoutUser = async () => {

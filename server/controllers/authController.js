@@ -76,7 +76,8 @@ export const register = async (req, res) => {
       role: role || "patient",
       specialization: role === "doctor" ? (specialization || "") : "",
       experience: role === "doctor" ? (Number(experience) || 0) : 0,
-      location: role === "doctor" ? (location || "") : "",
+      locationName: role === "doctor" ? (location || "") : "",
+      location: role === "doctor" ? { type: "Point", coordinates: [0, 0] } : undefined,
       consultationFee: role === "doctor" ? (Number(consultationFee) || 0) : 0,
       about: role === "doctor" ? (about || "") : "",
       isOnline: false,
@@ -96,6 +97,7 @@ export const register = async (req, res) => {
         specialization: user.specialization,
         experience: user.experience,
         location: user.location,
+        locationName: user.locationName,
         consultationFee: user.consultationFee,
         about: user.about,
         rating: user.rating,
@@ -111,6 +113,7 @@ export const register = async (req, res) => {
     });
   }
 };
+
 
 // ================= LOGIN =================
 export const login = async (req, res) => {
@@ -168,6 +171,7 @@ export const login = async (req, res) => {
         specialization: user.specialization,
         experience: user.experience,
         location: user.location,
+        locationName: user.locationName,
         consultationFee: user.consultationFee,
         about: user.about,
         rating: user.rating,
@@ -206,6 +210,7 @@ export const getCurrentUser = async (req, res) => {
         specialization: user.specialization,
         experience: user.experience,
         location: user.location,
+        locationName: user.locationName,
         consultationFee: user.consultationFee,
         about: user.about,
         rating: user.rating,
@@ -242,8 +247,38 @@ export const getConsultants = async (req, res) => {
 // ================= GET DOCTORS =================
 export const getDoctors = async (req, res) => {
   try {
-    const doctors = await User.find({ role: "doctor" }).select("-password");
-    
+    const { latitude, longitude } = req.query;
+    let doctors;
+
+    if (latitude && longitude && !Number.isNaN(Number(latitude)) && !Number.isNaN(Number(longitude))) {
+      const lat = Number(latitude);
+      const lng = Number(longitude);
+      
+      doctors = await User.aggregate([
+        {
+          $geoNear: {
+            near: {
+              type: "Point",
+              coordinates: [lng, lat],
+            },
+            distanceField: "distance",
+            spherical: true,
+            maxDistance: 50000, // 50 km
+            query: {
+              role: "doctor",
+            },
+          },
+        },
+        {
+          $project: {
+            password: 0,
+          },
+        },
+      ]);
+    } else {
+      doctors = await User.find({ role: "doctor" }).select("-password").lean();
+    }
+
     // Filter doctors by current availability in Asia/Kolkata timezone
     const availableDoctors = doctors.filter((doctor) =>
       checkDoctorAvailability(doctor.availability)
@@ -297,7 +332,7 @@ export const updateProfile = async (req, res) => {
 
     user.specialization = specialization !== undefined ? specialization : user.specialization;
     user.experience = experience !== undefined ? Number(experience) : user.experience;
-    user.location = location !== undefined ? location : user.location;
+    user.locationName = location !== undefined ? location : user.locationName;
     user.consultationFee = consultationFee !== undefined ? Number(consultationFee) : user.consultationFee;
     user.about = about !== undefined ? about : user.about;
 
@@ -314,6 +349,7 @@ export const updateProfile = async (req, res) => {
         specialization: user.specialization,
         experience: user.experience,
         location: user.location,
+        locationName: user.locationName,
         consultationFee: user.consultationFee,
         about: user.about,
         rating: user.rating,
@@ -323,5 +359,56 @@ export const updateProfile = async (req, res) => {
   } catch (error) {
     console.error("Update Profile Error:", error);
     return res.status(500).json({ success: false, message: error.message });
+  }
+};
+export const updateLocation = async (req, res) => {
+  try {
+    const { latitude, longitude } = req.body;
+
+    if (
+      typeof latitude !== "number" ||
+      typeof longitude !== "number"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid latitude and longitude required",
+      });
+    }
+
+    if (
+      latitude < -90 ||
+      latitude > 90 ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid coordinates",
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        location: {
+          type: "Point",
+          coordinates: [longitude, latitude],
+        },
+      },
+      { new: true }
+    ).select("-password");
+
+    res.json({
+      success: true,
+      message: "Location updated successfully",
+      user,
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to update location",
+    });
   }
 };

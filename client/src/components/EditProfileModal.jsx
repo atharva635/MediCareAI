@@ -8,7 +8,7 @@ export default function EditProfileModal({ doctor, onClose, onSaveSuccess }) {
   const [formData, setFormData] = useState({
     specialization: doctor?.specialization || "",
     experience: doctor?.experience || "",
-    location: doctor?.location || "",
+    location: doctor?.locationName || (doctor?.location && typeof doctor.location === "string" ? doctor.location : ""),
     consultationFee: doctor?.consultationFee || "",
     about: doctor?.about || "",
   });

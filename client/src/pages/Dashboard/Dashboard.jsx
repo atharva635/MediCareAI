@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { setUser } from "../../redux/slices/authSlice";
+import { updateLocation } from "../../services/authService";
+import { toast } from "react-hot-toast";
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
 import EditProfileModal from "../../components/EditProfileModal";
@@ -108,6 +110,51 @@ export default function Dashboard() {
     dispatch(setUser({ user: { ...user, availability: updatedAvailability } }));
   };
 
+  const handleUseLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Location is not supported by your browser.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+
+        try {
+          const res = await updateLocation(latitude, longitude);
+          dispatch(setUser({ user: res.data.user }));
+          toast.success("Location saved successfully 📍");
+        } catch (error) {
+          toast.error(
+            error.response?.data?.message ||
+            "Failed to save location"
+          );
+        }
+      },
+      (error) => {
+        console.error(error);
+        toast.error(
+          "Please allow location permission in your browser."
+        );
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  };
+
+  const displayLocation = (loc) => {
+    if (!loc) return "Ghaziabad";
+    if (typeof loc === "string") return loc;
+    if (loc.coordinates && loc.coordinates.length === 2) {
+      return `${loc.coordinates[1].toFixed(4)}, ${loc.coordinates[0].toFixed(4)}`;
+    }
+    return "Ghaziabad";
+  };
+
   return (
     <div className="dashboard-layout">
       <Sidebar />
@@ -146,7 +193,14 @@ export default function Dashboard() {
                   <h2>Clinical Profile Card</h2>
                   <p>Matches information displayed on patient search lists.</p>
                 </div>
-                <div className="summary-header-actions" style={{ display: "flex", gap: "10px" }}>
+                <div className="summary-header-actions" style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                  <button 
+                    onClick={handleUseLocation}
+                    className="btn-primary-custom btn-location-trigger"
+                    style={{ background: "rgba(245, 158, 11, 0.1)", color: "#f59e0b", border: "1px solid rgba(245, 158, 11, 0.2)" }}
+                  >
+                    📍 Use Current Location
+                  </button>
                   <button 
                     onClick={() => setShowAvailabilityModal(true)}
                     className="btn-primary-custom btn-availability-trigger"
@@ -176,7 +230,7 @@ export default function Dashboard() {
 
                 <div className="summary-field">
                   <span>Location</span>
-                  <strong>{user?.location || "Ghaziabad"}</strong>
+                  <strong>{displayLocation(user?.location)}</strong>
                 </div>
 
                 <div className="summary-field">

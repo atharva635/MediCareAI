@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { getDoctors } from "../../services/authService";
+import { toast } from "react-hot-toast";
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
 import Loader from "../../components/Loader";
@@ -30,6 +31,40 @@ export default function PatientDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFindNearbyDoctors = () => {
+    if (!navigator.geolocation) {
+      toast.error("Location is not supported by your browser.");
+      return;
+    }
+
+    toast.loading("Fetching coordinates...", { id: "geoSearch" });
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+
+        try {
+          toast.loading("Finding nearest doctors...", { id: "geoSearch" });
+          const res = await getDoctors({ latitude, longitude });
+          setDoctors(res.data.doctors || []);
+          toast.success("Nearby doctors found! 📍", { id: "geoSearch" });
+        } catch (error) {
+          toast.error("Failed to load nearby doctors.", { id: "geoSearch" });
+        }
+      },
+      (error) => {
+        console.error(error);
+        toast.error("Please allow location permission to find doctors nearby.", { id: "geoSearch" });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
   };
 
   // Helper to get stable distance based on Mongoose ObjectId
@@ -63,9 +98,18 @@ export default function PatientDashboard() {
           </div>
 
           <div className="dashboard-discovery-section">
-            <div className="section-header-row">
+            <div className="section-header-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
               <h2 className="section-title">Attending Doctors Available Now</h2>
-              <span className="live-count-badge">🟢 {doctors.length} Available Now</span>
+              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                <button
+                  onClick={handleFindNearbyDoctors}
+                  className="btn-primary-custom btn-location-trigger"
+                  style={{ background: "rgba(45, 212, 191, 0.1)", color: "#2dd4bf", border: "1px solid rgba(45, 212, 191, 0.2)", padding: "6px 12px", fontSize: "0.85rem" }}
+                >
+                  📍 Find Doctors Near Me
+                </button>
+                <span className="live-count-badge">🟢 {doctors.length} Available Now</span>
+              </div>
             </div>
 
             {doctors.length === 0 ? (
@@ -92,8 +136,8 @@ export default function PatientDashboard() {
                         </div>
 
                         <div className="card-meta-line border-top">
-                          <span>📍 {doc.location || "Ghaziabad"}</span>
-                          <span>📏 {distance} km away</span>
+                          <span>📍 {doc.locationName || (typeof doc.location === "string" ? doc.location : "Ghaziabad")}</span>
+                          <span>📏 {doc.distance !== undefined ? `${(doc.distance / 1000).toFixed(1)} km away` : `${distance} km away`}</span>
                         </div>
 
                         <div className="card-meta-line" style={{ marginTop: "4px" }}>
