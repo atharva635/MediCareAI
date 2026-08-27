@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import generateToken from "../utils/generateToken.js";
+import { checkDoctorAvailability } from "../utils/timeHelper.js";
 
 // ================= REGISTER =================
 export const register = async (req, res) => {
@@ -241,10 +242,16 @@ export const getConsultants = async (req, res) => {
 // ================= GET DOCTORS =================
 export const getDoctors = async (req, res) => {
   try {
-    const doctors = await User.find({ role: "doctor", isOnline: true }).select("-password");
+    const doctors = await User.find({ role: "doctor" }).select("-password");
+    
+    // Filter doctors by current availability in Asia/Kolkata timezone
+    const availableDoctors = doctors.filter((doctor) =>
+      checkDoctorAvailability(doctor.availability)
+    );
+
     return res.status(200).json({
       success: true,
-      doctors,
+      doctors: availableDoctors,
     });
   } catch (error) {
     console.error("Get Doctors Error:", error);

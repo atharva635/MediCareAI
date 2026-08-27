@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { setUser } from "../../redux/slices/authSlice";
 import Sidebar from "../../components/Sidebar";
@@ -8,11 +8,97 @@ import AvailabilityModal from "../../components/AvailabilityModal";
 import { RiUser3Line, RiShieldUserLine, RiEdit2Line, RiCalendarCheckLine } from "react-icons/ri";
 import "./Dashboard.css";
 
+// Helpers for checking doctor's availability locally in Asia/Kolkata timezone
+const formatTime = (timeStr) => {
+  try {
+    const parts = timeStr.trim().split(/\s+/);
+    if (parts.length < 2) return timeStr.trim();
+    let [time, modifier] = parts;
+    let [hours, minutes] = time.split(":");
+    hours = hours.padStart(2, "0");
+    minutes = minutes.padStart(2, "0");
+    return `${hours}:${minutes} ${modifier.toUpperCase()}`;
+  } catch (e) {
+    return timeStr.trim();
+  }
+};
+
+const parseTimeToMinutes = (timeStr) => {
+  const normalized = formatTime(timeStr);
+  const [time, modifier] = normalized.split(" ");
+  let [hours, minutes] = time.split(":").map(Number);
+  if (modifier === "PM" && hours < 12) {
+    hours += 12;
+  }
+  if (modifier === "AM" && hours === 12) {
+    hours = 0;
+  }
+  return hours * 60 + minutes;
+};
+
+const getKolkataTimeInfo = (date = new Date()) => {
+  const options = {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    weekday: "long"
+  };
+  const formatter = new Intl.DateTimeFormat("en-US", options);
+  const parts = formatter.formatToParts(date);
+  const info = {};
+  for (const part of parts) {
+    info[part.type] = part.value;
+  }
+  return {
+    dayName: info.weekday,
+    hours: parseInt(info.hour),
+    minutes: parseInt(info.minute)
+  };
+};
+
+const checkAvailability = (availability) => {
+  if (!availability) return false;
+  
+  const { dayName, hours, minutes } = getKolkataTimeInfo(new Date());
+  const currentMinutes = hours * 60 + minutes;
+  
+  const ranges = availability[dayName];
+  if (!ranges || ranges.length === 0) {
+    return false;
+  }
+  
+  for (const range of ranges) {
+    const parts = range.split("-");
+    if (parts.length !== 2) continue;
+    const startMinutes = parseTimeToMinutes(parts[0].trim());
+    const endMinutes = parseTimeToMinutes(parts[1].trim());
+    
+    if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
+      return true;
+    }
+  }
+  
+  return false;
+};
+
 export default function Dashboard() {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
+  const [isAvailableNow, setIsAvailableNow] = useState(false);
+
+  useEffect(() => {
+    const updateAvailabilityStatus = () => {
+      setIsAvailableNow(checkAvailability(user?.availability));
+    };
+
+    updateAvailabilityStatus();
+    const interval = setInterval(updateAvailabilityStatus, 15000); // Check every 15 seconds
+
+    return () => clearInterval(interval);
+  }, [user?.availability]);
 
   const handleProfileSave = (updatedUser) => {
     dispatch(setUser({ user: updatedUser }));
@@ -39,12 +125,16 @@ export default function Dashboard() {
           <div className="dashboard-insights-grid" style={{ gridTemplateColumns: "1fr" }}>
             <div className="doctor-status-alert glass-panel">
               <div className="status-header">
-                <span className="status-avail-dot pulsing-green"></span>
-                <h3>Attending Clinician: ONLINE</h3>
+                <span className={`status-avail-dot ${isAvailableNow ? "pulsing-green" : ""}`} style={{ backgroundColor: isAvailableNow ? "#10b981" : "#64748b" }}></span>
+                <h3 style={{ color: isAvailableNow ? "#34d399" : "#94a3b8" }}>
+                  Attending Clinician: {isAvailableNow ? "AVAILABLE NOW" : "INACTIVE / OFFLINE"}
+                </h3>
               </div>
               <p className="status-desc-text">
-                Your credentials and consultation cards are active in patient searches. 
-                Logout to set status to offline.
+                {isAvailableNow 
+                  ? "Your consultation profile is currently active and visible to patients in search lists."
+                  : "Your profile is hidden from patient searches because you are outside your configured consultation hours. Use 'Set Availability' below to adjust your timings."
+                }
               </p>
             </div>
 

@@ -2,51 +2,13 @@ import Appointment from "../models/Appointment.js";
 import User from "../models/User.js";
 import { sendEmailNotification } from "../services/emailService.js";
 import { analyzeIntakeChat } from "../services/aiService.js";
+import {
+  formatTime,
+  parseTimeToMinutes,
+  minutesToTimeString,
+  isSlotWithinAvailability
+} from "../utils/timeHelper.js";
 
-// Helper: Normalize time string to uniform "HH:MM AM/PM" format for consistent comparisons
-const formatTime = (timeStr) => {
-  try {
-    const parts = timeStr.trim().split(/\s+/);
-    if (parts.length < 2) return timeStr.trim();
-    let [time, modifier] = parts;
-    let [hours, minutes] = time.split(":");
-    hours = hours.padStart(2, "0");
-    minutes = minutes.padStart(2, "0");
-    return `${hours}:${minutes} ${modifier.toUpperCase()}`;
-  } catch (e) {
-    return timeStr.trim();
-  }
-};
-
-// Helper: Convert time string e.g. "10:30 AM" to minutes from midnight
-const parseTimeToMinutes = (timeStr) => {
-  const normalized = formatTime(timeStr);
-  const [time, modifier] = normalized.split(" ");
-  let [hours, minutes] = time.split(":").map(Number);
-  if (modifier === "PM" && hours < 12) {
-    hours += 12;
-  }
-  if (modifier === "AM" && hours === 12) {
-    hours = 0;
-  }
-  return hours * 60 + minutes;
-};
-
-// Helper: Convert minutes from midnight back to time string e.g. "10:30 AM"
-const minutesToTimeString = (minutes) => {
-  let hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  const modifier = hours >= 12 ? "PM" : "AM";
-  if (hours > 12) {
-    hours -= 12;
-  }
-  if (hours === 0) {
-    hours = 12;
-  }
-  const minsStr = mins < 10 ? `0${mins}` : mins;
-  const hoursStr = hours < 10 ? `0${hours}` : hours;
-  return `${hoursStr}:${minsStr} ${modifier}`;
-};
 
 // ================= APPOINTMENT CONTROLLERS =================
 
@@ -68,6 +30,14 @@ export const createAppointment = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Doctor not found or invalid user role",
+      });
+    }
+
+    // Verify slot is within doctor's availability range
+    if (!isSlotWithinAvailability(doctorUser.availability, appointmentDate, appointmentTime)) {
+      return res.status(400).json({
+        success: false,
+        message: "Doctor is not available at the selected date and time slot. Please check their set availability.",
       });
     }
 

@@ -55,7 +55,7 @@ export default function PatientDashboard() {
           <div className="patient-welcome-banner glass-panel">
             <div className="banner-left">
               <h1>Good Morning, {user?.fullName?.split(" ")[0]} 👋</h1>
-              <p>Discover medical officers currently online and consult instantly.</p>
+              <p>Discover medical officers currently available and consult instantly.</p>
             </div>
             <div className="banner-icon-bg">
               <RiSignalTowerLine />
@@ -64,15 +64,15 @@ export default function PatientDashboard() {
 
           <div className="dashboard-discovery-section">
             <div className="section-header-row">
-              <h2 className="section-title">Online Attending Doctors</h2>
-              <span className="live-count-badge">🟢 {doctors.length} Active Now</span>
+              <h2 className="section-title">Attending Doctors Available Now</h2>
+              <span className="live-count-badge">🟢 {doctors.length} Available Now</span>
             </div>
 
             {doctors.length === 0 ? (
               <div className="empty-doctors-state glass-panel">
                 <RiHeartPulseLine className="pulse-icon-empty" />
-                <h3>No Doctors Currently Online</h3>
-                <p>No active physicians are registered as online. Please wait or check back shortly.</p>
+                <h3>No Doctors Currently Available</h3>
+                <p>No physicians are currently available for consultation. Please wait or check back shortly.</p>
               </div>
             ) : (
               <div className="doctors-discovery-grid">
@@ -82,7 +82,7 @@ export default function PatientDashboard() {
                     <div key={doc._id} className="patient-doctor-card glass-panel animate-slide">
                       <div className="doctor-avatar-box">👨‍⚕️</div>
                       <div className="doctor-card-content">
-                        <span className="card-avail-badge">🟢 Available</span>
+                        <span className="card-avail-badge">🟢 AVAILABLE NOW</span>
                         <h3>{doc.fullName}</h3>
                         <p className="card-spec-text">{doc.specialization || "General Medicine"}</p>
                         

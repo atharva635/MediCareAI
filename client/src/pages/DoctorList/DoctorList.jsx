@@ -102,7 +102,7 @@ export default function DoctorList() {
                     </div>
 
                     <div className="doc-status-indicator">
-                      <span className="availability-dot"></span> Available Now
+                      <span className="availability-dot"></span> AVAILABLE NOW
                     </div>
 
                     <button
