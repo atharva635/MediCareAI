@@ -34,7 +34,10 @@ const AIChatbot = () => {
     setLoading(true);
 
     try {
-      const response = await fetch("https://medicareai-backend-lp1l.onrender.com/api/ai/chat", {
+      const apiBaseUrl = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+        ? "http://localhost:5000"
+        : "https://medicareai-backend-lp1l.onrender.com";
+      const response = await fetch(`${apiBaseUrl}/api/ai/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

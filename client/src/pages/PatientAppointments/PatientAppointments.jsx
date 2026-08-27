@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
-import { getPatientAppointments, cancelAppointment } from "../../services/appointmentService";
+import { getPatientAppointments, cancelAppointment, payAppointment } from "../../services/appointmentService";
 import { createRazorpayOrder, verifyRazorpayPayment } from "../../services/paymentService";
 import { toast } from "react-hot-toast";
 import { RiCalendarEventLine, RiTimeLine, RiMoneyRupeeCircleLine, RiCheckboxCircleLine, RiDiscussLine, RiCloseCircleLine, RiShieldFlashLine, RiHeartPulseLine } from "react-icons/ri";
@@ -132,6 +132,27 @@ export default function PatientAppointments() {
     }
   };
 
+  const handleMockPayment = async (appt) => {
+    if (paymentLoading) return;
+    try {
+      setPaymentLoading(true);
+      toast.loading("Simulating payment...", { id: "payment" });
+      const res = await payAppointment(appt._id);
+      if (res.data.success) {
+        toast.success("Payment Successful (Demo)! Slot Confirmed 🎉", { id: "payment" });
+        loadAppointments();
+      } else {
+        toast.error(res.data.message || "Failed to process mock payment.", { id: "payment" });
+      }
+    } catch (error) {
+      console.error("Mock payment error:", error);
+      toast.error(error.response?.data?.message || "Mock payment failed.", { id: "payment" });
+    } finally {
+      toast.dismiss("payment");
+      setPaymentLoading(false);
+    }
+  };
+
   const handleJoin = (appt) => {
     // Navigate directly to consultation space
     navigate(`/consultation/${appt._id}`);
@@ -170,15 +191,13 @@ export default function PatientAppointments() {
   const upcomingAppointments = appointments.filter((appt) =>
     (appt.appointmentStatus === "pending" ||
       appt.appointmentStatus === "confirmed") &&
-    appt.doctorDecision !== "rejected" &&
-    !isAppointmentPast(appt)
+    appt.doctorDecision !== "rejected"
   );
 
   const pastAppointments = appointments.filter((appt) =>
     appt.appointmentStatus === "completed" ||
     appt.appointmentStatus === "cancelled" ||
-    appt.doctorDecision === "rejected" ||
-    isAppointmentPast(appt)
+    appt.doctorDecision === "rejected"
   );
 
   const displayedAppointments = activeTab === "upcoming" ? upcomingAppointments : pastAppointments;
@@ -300,18 +319,27 @@ export default function PatientAppointments() {
                           </span>
                           <p style={{ margin: "0", fontSize: "0.8rem", color: "#94a3b8" }}>Please complete payment.</p>
                           
-                          <div style={{ display: "flex", gap: "10px" }}>
+                          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                             <button
                               onClick={() => handlePayment(appt)}
                               className="btn-pay-now"
-                              style={{ flex: 1 }}
+                              style={{ flex: 1, minWidth: "120px" }}
                               disabled={paymentLoading}
                             >
                               <RiShieldFlashLine style={{ marginRight: "4px" }} /> Pay ₹{appt.amount}
                             </button>
                             <button
+                              onClick={() => handleMockPayment(appt)}
+                              className="btn-pay-now"
+                              style={{ flex: 1, minWidth: "120px", background: "rgba(16, 185, 129, 0.15)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.3)" }}
+                              disabled={paymentLoading}
+                            >
+                              <RiShieldFlashLine style={{ marginRight: "4px" }} /> Mock Pay (Demo)
+                            </button>
+                            <button
                               onClick={() => handleCancel(appt._id)}
                               className="btn-cancel-appt"
+                              style={{ minWidth: "80px" }}
                             >
                               Cancel
                             </button>
