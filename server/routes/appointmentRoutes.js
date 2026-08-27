@@ -13,6 +13,7 @@ import {
   payAppointment,
   acceptAppointment,
   rejectAppointment,
+  deleteAppointment,
 } from "../controllers/appointmentController.js";
 
 const router = express.Router();
@@ -36,5 +37,6 @@ router.put("/:id/cancel", authMiddleware, cancelAppointment);
 router.put("/:id/complete", authMiddleware, requireRole(["doctor"]), completeAppointment);
 router.put("/:id/accept", authMiddleware, requireRole(["doctor"]), acceptAppointment);
 router.put("/:id/reject", authMiddleware, requireRole(["doctor"]), rejectAppointment);
+router.delete("/:id", authMiddleware, deleteAppointment);
 
 export default router;

@@ -238,6 +238,25 @@ export const cancelAppointment = async (req, res) => {
     appointment.appointmentStatus = "cancelled";
     await appointment.save();
 
+    // Trigger Email Notification (Appointment cancelled)
+    try {
+      const populated = await appointment.populate("patient doctor");
+      const cancellerName = req.user.role === "doctor" ? `Dr. ${populated.doctor.fullName}` : populated.patient.fullName;
+      
+      await sendEmailNotification({
+        to: populated.patient.email,
+        subject: "Appointment Cancelled",
+        text: `Hello ${populated.patient.fullName},\n\nWe inform you that the appointment scheduled with Dr. ${populated.doctor.fullName} on ${populated.appointmentDate} at ${populated.appointmentTime} has been cancelled by ${cancellerName}.\n\nRegards,\nMediCare AI Team`
+      });
+      await sendEmailNotification({
+        to: populated.doctor.email,
+        subject: "Appointment Cancelled",
+        text: `Hello Dr. ${populated.doctor.fullName},\n\nWe inform you that the appointment scheduled with ${populated.patient.fullName} on ${populated.appointmentDate} at ${populated.appointmentTime} has been cancelled by ${cancellerName}.\n\nRegards,\nMediCare AI Team`
+      });
+    } catch (emailErr) {
+      console.error("Email notification failed:", emailErr);
+    }
+
     res.json({
       success: true,
       message: "Appointment cancelled successfully",
@@ -283,6 +302,25 @@ export const completeAppointment = async (req, res) => {
     }
 
     await appointment.save();
+
+    // Trigger Email Notification (Consultation completed)
+    try {
+      const populated = await appointment.populate("patient doctor");
+      // Notify Patient
+      await sendEmailNotification({
+        to: populated.patient.email,
+        subject: "Your Consultation Summary & Prescriptions",
+        text: `Hello ${populated.patient.fullName},\n\nYour consultation with Dr. ${populated.doctor.fullName} has been concluded. Here is your clinical summary:\n\nObservations: ${populated.doctorNotes || "None logged"}\nPrescriptions: ${populated.prescriptions || "None prescribed"}\nFollow-up: ${populated.followUp || "None specified"}\n\nThank you for choosing MediCare AI.\n\nRegards,\nMediCare AI Team`
+      });
+      // Notify Doctor
+      await sendEmailNotification({
+        to: populated.doctor.email,
+        subject: "Consultation Session Concluded",
+        text: `Hello Dr. ${populated.doctor.fullName},\n\nThe consultation session with ${populated.patient.fullName} has been successfully concluded and recorded in history.\n\nRegards,\nMediCare AI Team`
+      });
+    } catch (emailErr) {
+      console.error("Email notification failed:", emailErr);
+    }
 
     res.json({
       success: true,
@@ -487,13 +525,18 @@ export const payAppointment = async (req, res) => {
     appointment.appointmentStatus = "confirmed";
     await appointment.save();
 
-    // Trigger Email Notification (Patient paid, notify Doctor)
+    // Trigger Email Notification (Patient paid, notify Doctor and Patient)
     try {
       const populated = await appointment.populate("patient doctor");
       await sendEmailNotification({
         to: populated.doctor.email,
         subject: "Patient Payment Received - Appointment Confirmed",
         text: `Hello Dr. ${populated.doctor.fullName},\n\nPayment has been successfully received for the appointment with ${populated.patient.fullName} scheduled on ${populated.appointmentDate} at ${populated.appointmentTime}.\n\nThe appointment status is now Confirmed.\n\nRegards,\nMediCare AI Team`
+      });
+      await sendEmailNotification({
+        to: populated.patient.email,
+        subject: "Appointment Confirmed - Payment Successful",
+        text: `Hello ${populated.patient.fullName},\n\nYour payment of ₹${populated.amount} for the consultation with Dr. ${populated.doctor.fullName} on ${populated.appointmentDate} at ${populated.appointmentTime} has been successfully received.\n\nYour appointment is now Confirmed. You can join the session from your appointments dashboard at the scheduled time.\n\nRegards,\nMediCare AI Team`
       });
     } catch (emailErr) {
       console.error("Email notification failed:", emailErr);
@@ -610,6 +653,44 @@ export const rejectAppointment = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error rejecting appointment",
+    });
+  }
+};
+
+// 13. Delete Appointment (Patient or Doctor)
+export const deleteAppointment = async (req, res) => {
+  try {
+    const appointment = await Appointment.findById(req.params.id);
+
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: "Appointment not found",
+      });
+    }
+
+    // Ensure only the patient or doctor associated can delete
+    if (
+      appointment.patient.toString() !== req.user.id &&
+      appointment.doctor.toString() !== req.user.id
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Cannot delete this appointment.",
+      });
+    }
+
+    await Appointment.findByIdAndDelete(req.params.id);
+
+    res.json({
+      success: true,
+      message: "Appointment deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete Appointment Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error deleting appointment",
     });
   }
 };

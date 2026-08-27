@@ -59,3 +59,8 @@ export const acceptAppointment = async (id) => {
 export const rejectAppointment = async (id, data) => {
   return await api.put(`/appointments/${id}/reject`, data);
 };
+
+// 13. Delete Appointment
+export const deleteAppointment = async (id) => {
+  return await api.delete(`/appointments/${id}`);
+};

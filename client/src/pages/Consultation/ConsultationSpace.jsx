@@ -5,6 +5,7 @@ import { getPatientById, startConsultation, completeConsultation } from "../../s
 import { getAppointmentById, completeAppointment } from "../../services/appointmentService";
 import { getRoomMessages } from "../../services/consultationService";
 import { getConsultants } from "../../services/authService";
+import api from "../../services/api";
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
 import Loader from "../../components/Loader";
@@ -50,6 +51,7 @@ export default function ConsultationSpace() {
   const [selectedConsultant, setSelectedConsultant] = useState("");
   const [referralReason, setReferralReason] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
 
   // WebRTC & Socket states
   const socketRef = useRef(null);
@@ -381,6 +383,37 @@ const socket = io(socketUrl);
     }
   };
 
+  const handleGetAiRecommendations = async () => {
+    try {
+      setAiLoading(true);
+      toast.loading("Generating clinical observations and prescriptions...", { id: "ai-recommend" });
+      
+      const payload = {
+        symptoms: patientCase.symptoms || [],
+        medicalNote: patientCase.medicalHistory || "",
+        chiefComplaint: patientCase.name || "Patient",
+      };
+
+      const res = await api.post("/ai/recommendation", payload);
+      
+      if (res.data.success && res.data.recommendation) {
+        const { doctorNotes: notes, prescriptions: meds, followUp: follow } = res.data.recommendation;
+        setDoctorNotes(notes || "");
+        setPrescriptions(meds || "");
+        setFollowUp(follow || "3 days");
+        toast.success("AI clinical suggestions pre-filled! 🩺", { id: "ai-recommend" });
+      } else {
+        toast.error("Failed to generate AI recommendations.", { id: "ai-recommend" });
+      }
+    } catch (err) {
+      console.error("AI recommendation error:", err);
+      toast.error(err.response?.data?.message || "AI recommendation failed.", { id: "ai-recommend" });
+    } finally {
+      toast.dismiss("ai-recommend");
+      setAiLoading(false);
+    }
+  };
+
   const handleLeaveRoom = () => {
     if (user?.role === "doctor") {
       navigate(patientCase?.isAppointment ? "/doctor/appointments" : "/doctor/dashboard");
@@ -561,6 +594,26 @@ const socket = io(socketUrl);
                   <p className="subtitle-card">Record clinical findings, prescriptions, and referral instructions.</p>
 
                   <form onSubmit={handleComplete} className="doctor-clinical-form">
+                    <button
+                      type="button"
+                      onClick={handleGetAiRecommendations}
+                      disabled={aiLoading || actionLoading}
+                      className="btn-primary-custom"
+                      style={{ 
+                        background: "rgba(56, 189, 248, 0.15)", 
+                        color: "#38bdf8", 
+                        border: "1px solid rgba(56, 189, 248, 0.3)", 
+                        marginBottom: "16px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "8px",
+                        fontWeight: "700"
+                      }}
+                    >
+                      {aiLoading ? "🤖 Analyzing Case..." : "🤖 AI Assist Recommendations"}
+                    </button>
+
                     <div className="input-group-modal">
                       <label className="input-label-modal">Attending Clinician Observations</label>
                       <textarea

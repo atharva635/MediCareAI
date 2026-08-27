@@ -10,6 +10,79 @@ import { RiStarFill, RiMapPinLine, RiHeartPulseLine, RiDiscussLine, RiSignalTowe
 import "./PatientDashboard.css";
 import AIChatbot from "../../components/AIChatbot";
 
+const formatTime = (timeStr) => {
+  try {
+    const parts = timeStr.trim().split(/\s+/);
+    if (parts.length < 2) return timeStr.trim();
+    let [time, modifier] = parts;
+    let [hours, minutes] = time.split(":");
+    hours = hours.padStart(2, "0");
+    minutes = minutes.padStart(2, "0");
+    return `${hours}:${minutes} ${modifier.toUpperCase()}`;
+  } catch (e) {
+    return timeStr.trim();
+  }
+};
+
+const parseTimeToMinutes = (timeStr) => {
+  const normalized = formatTime(timeStr);
+  const [time, modifier] = normalized.split(" ");
+  let [hours, minutes] = time.split(":").map(Number);
+  if (modifier === "PM" && hours < 12) {
+    hours += 12;
+  }
+  if (modifier === "AM" && hours === 12) {
+    hours = 0;
+  }
+  return hours * 60 + minutes;
+};
+
+const getKolkataTimeInfo = (date = new Date()) => {
+  const options = {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    weekday: "long"
+  };
+  const formatter = new Intl.DateTimeFormat("en-US", options);
+  const parts = formatter.formatToParts(date);
+  const info = {};
+  for (const part of parts) {
+    info[part.type] = part.value;
+  }
+  return {
+    dayName: info.weekday,
+    hours: parseInt(info.hour),
+    minutes: parseInt(info.minute)
+  };
+};
+
+const checkAvailability = (availability) => {
+  if (!availability) return false;
+  
+  const { dayName, hours, minutes } = getKolkataTimeInfo(new Date());
+  const currentMinutes = hours * 60 + minutes;
+  
+  const ranges = availability[dayName];
+  if (!ranges || ranges.length === 0) {
+    return false;
+  }
+  
+  for (const range of ranges) {
+    const parts = range.split("-");
+    if (parts.length !== 2) continue;
+    const startMinutes = parseTimeToMinutes(parts[0].trim());
+    const endMinutes = parseTimeToMinutes(parts[1].trim());
+    
+    if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
+      return true;
+    }
+  }
+  
+  return false;
+};
+
 export default function PatientDashboard() {
   const { user } = useSelector((state) => state.auth);
   const [doctors, setDoctors] = useState([]);
@@ -76,13 +149,24 @@ export default function PatientDashboard() {
               </div>
             ) : (
               <div className="doctors-discovery-grid">
-                {doctors.map((doc) => {
+                 {doctors.map((doc) => {
                   const distance = getStableDistance(doc._id);
+                  const isAvailable = checkAvailability(doc.availability);
                   return (
                     <div key={doc._id} className="patient-doctor-card glass-panel animate-slide">
                       <div className="doctor-avatar-box">👨‍⚕️</div>
                       <div className="doctor-card-content">
-                        <span className="card-avail-badge">🟢 AVAILABLE NOW</span>
+                        <span className="card-avail-badge" style={{
+                          background: isAvailable ? "rgba(16, 185, 129, 0.15)" : "rgba(245, 158, 11, 0.15)",
+                          color: isAvailable ? "#10b981" : "#f59e0b",
+                          border: isAvailable ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid rgba(245, 158, 11, 0.3)",
+                          padding: "4px 8px",
+                          borderRadius: "6px",
+                          fontSize: "0.75rem",
+                          fontWeight: "700"
+                        }}>
+                          {isAvailable ? "🟢 AVAILABLE NOW" : "📅 BOOKING ACTIVE"}
+                        </span>
                         <h3>{doc.fullName}</h3>
                         <p className="card-spec-text">{doc.specialization || "General Medicine"}</p>
                         
@@ -92,13 +176,28 @@ export default function PatientDashboard() {
                         </div>
 
                         <div className="card-meta-line border-top">
-                          <span>📍 {doc.location || "Ghaziabad"}</span>
+                          <span>📍 {doc.location?.name || doc.location || "Ghaziabad"}</span>
                           <span>📏 {distance} km away</span>
                         </div>
 
                         <div className="card-meta-line" style={{ marginTop: "4px" }}>
                           <span>💼 {doc.experience || 5} years experience</span>
                           <span className="card-fee">₹{doc.consultationFee || 299}</span>
+                        </div>
+
+                        <div className="card-weekly-avail border-top" style={{ padding: "8px 0", fontSize: "0.75rem" }}>
+                          <span style={{ color: "#94a3b8", fontWeight: "700" }}>Weekly Schedule:</span>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "4px" }}>
+                            {Object.entries(doc.availability || {}).map(([day, ranges]) => {
+                              if (!ranges || ranges.length === 0) return null;
+                              return (
+                                <div key={day} style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1" }}>
+                                  <span>{day}</span>
+                                  <span style={{ color: "#38bdf8", fontWeight: "600" }}>{ranges.join(", ")}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
 
                         <div className="card-actions-row border-top">

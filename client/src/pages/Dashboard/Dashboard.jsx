@@ -176,7 +176,7 @@ export default function Dashboard() {
 
                 <div className="summary-field">
                   <span>Location</span>
-                  <strong>{user?.location || "Ghaziabad"}</strong>
+                  <strong>{user?.location?.name || user?.location || "Ghaziabad"}</strong>
                 </div>
 
                 <div className="summary-field">

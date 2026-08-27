@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
-import { getPatientAppointments, cancelAppointment, payAppointment } from "../../services/appointmentService";
+import { getPatientAppointments, cancelAppointment, payAppointment, deleteAppointment } from "../../services/appointmentService";
 import { createRazorpayOrder, verifyRazorpayPayment } from "../../services/paymentService";
 import { toast } from "react-hot-toast";
 import { RiCalendarEventLine, RiTimeLine, RiMoneyRupeeCircleLine, RiCheckboxCircleLine, RiDiscussLine, RiCloseCircleLine, RiShieldFlashLine, RiHeartPulseLine } from "react-icons/ri";
@@ -158,6 +158,17 @@ export default function PatientAppointments() {
     navigate(`/consultation/${appt._id}`);
   };
 
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to permanently delete this appointment record?")) return;
+    try {
+      await deleteAppointment(id);
+      toast.success("Appointment record deleted successfully ✅");
+      loadAppointments();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to delete record.");
+    }
+  };
+
   const formatAppointmentDate = (date) => {
     if (!date) return "N/A";
 
@@ -189,18 +200,27 @@ export default function PatientAppointments() {
 
   // Filter appointments
   const upcomingAppointments = appointments.filter((appt) =>
-    (appt.appointmentStatus === "pending" ||
-      appt.appointmentStatus === "confirmed") &&
+    appt.appointmentStatus === "confirmed" &&
+    appt.paymentStatus === "paid" &&
+    appt.doctorDecision === "accepted"
+  );
+
+  const pendingAppointments = appointments.filter((appt) =>
+    appt.appointmentStatus === "pending" &&
+    (appt.doctorDecision === "pending" || appt.paymentStatus === "pending") &&
     appt.doctorDecision !== "rejected"
   );
 
-  const pastAppointments = appointments.filter((appt) =>
+  const historyAppointments = appointments.filter((appt) =>
     appt.appointmentStatus === "completed" ||
     appt.appointmentStatus === "cancelled" ||
     appt.doctorDecision === "rejected"
   );
 
-  const displayedAppointments = activeTab === "upcoming" ? upcomingAppointments : pastAppointments;
+  const displayedAppointments =
+    activeTab === "upcoming" ? upcomingAppointments :
+    activeTab === "pending" ? pendingAppointments :
+    historyAppointments;
 
   return (
     <div className="appointments-layout">
@@ -215,7 +235,7 @@ export default function PatientAppointments() {
             <p>Track your upcoming doctor appointments, payments, and join clinical chats.</p>
           </div>
 
-          <div className="appointments-tabs">
+          <div className="appointments-tabs" style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
             <button
               onClick={() => setActiveTab("upcoming")}
               className={`tab-btn ${activeTab === "upcoming" ? "active" : ""}`}
@@ -223,10 +243,16 @@ export default function PatientAppointments() {
               Upcoming ({upcomingAppointments.length})
             </button>
             <button
-              onClick={() => setActiveTab("past")}
-              className={`tab-btn ${activeTab === "past" ? "active" : ""}`}
+              onClick={() => setActiveTab("pending")}
+              className={`tab-btn ${activeTab === "pending" ? "active" : ""}`}
             >
-              Consultation History ({pastAppointments.length})
+              Pending ({pendingAppointments.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("history")}
+              className={`tab-btn ${activeTab === "history" ? "active" : ""}`}
+            >
+              History ({historyAppointments.length})
             </button>
           </div>
 
@@ -236,7 +262,7 @@ export default function PatientAppointments() {
             <div className="empty-state glass-panel">
               <RiCalendarEventLine style={{ fontSize: "3rem", color: "#475569", marginBottom: "12px" }} />
               <h3>No Appointments Found</h3>
-              <p>You do not have any {activeTab} consultations scheduled at the moment.</p>
+              <p>You do not have any consultations in the "{activeTab.toUpperCase()}" category at the moment.</p>
             </div>
           ) : (
             <div className="appointments-grid">
@@ -293,15 +319,34 @@ export default function PatientAppointments() {
                     </div>
                   </div>
 
-                  {/* Actions Row (only for upcoming tabs) */}
+                  {/* 📅 Upcoming Tab Actions */}
                   {activeTab === "upcoming" && (
-                    <div className="card-actions-row border-top" style={{ paddingTop: "14px", flexDirection: "column", gap: "10px", alignItems: "stretch" }}>
-                      {appt.doctorDecision === "pending" && (
+                    <div className="card-actions-row border-top" style={{ paddingTop: "14px", display: "flex", gap: "10px" }}>
+                      <button
+                        onClick={() => handleJoin(appt)}
+                        className="btn-join-consult"
+                        style={{ flex: 1 }}
+                      >
+                        <RiDiscussLine /> Join Consultation
+                      </button>
+                      <button
+                        onClick={() => handleCancel(appt._id)}
+                        className="btn-cancel-appt"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+
+                  {/* ⏳ Pending Tab Actions */}
+                  {activeTab === "pending" && (
+                    <div className="card-actions-row border-top" style={{ paddingTop: "14px", flexDirection: "column", gap: "10px", display: "flex", width: "100%" }}>
+                      {appt.doctorDecision === "pending" ? (
                         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                           <span style={{ fontSize: "0.85rem", color: "#f59e0b", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
-                            ⏳ Waiting for Doctor
+                            ⏳ Awaiting Doctor's Review
                           </span>
-                          <p style={{ margin: "0", fontSize: "0.8rem", color: "#94a3b8" }}>Your appointment request has been sent.</p>
+                          <p style={{ margin: "0", fontSize: "0.8rem", color: "#94a3b8" }}>Your request is pending clinician approval.</p>
                           <button
                             onClick={() => handleCancel(appt._id)}
                             className="btn-cancel-appt"
@@ -310,15 +355,12 @@ export default function PatientAppointments() {
                             Cancel Request
                           </button>
                         </div>
-                      )}
-
-                      {appt.doctorDecision === "accepted" && appt.paymentStatus === "pending" && (
+                      ) : (
                         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                           <span style={{ fontSize: "0.85rem", color: "#10b981", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
                             ✅ Doctor Accepted
                           </span>
-                          <p style={{ margin: "0", fontSize: "0.8rem", color: "#94a3b8" }}>Please complete payment.</p>
-                          
+                          <p style={{ margin: "0", fontSize: "0.8rem", color: "#94a3b8" }}>Please complete payment to confirm your booking slot.</p>
                           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                             <button
                               onClick={() => handlePayment(appt)}
@@ -346,63 +388,66 @@ export default function PatientAppointments() {
                           </div>
                         </div>
                       )}
+                    </div>
+                  )}
 
-                      {appt.appointmentStatus === "confirmed" && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                          <span style={{ fontSize: "0.85rem", color: "#10b981", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
-                            ✅ Confirmed
-                          </span>
-                          <p style={{ margin: "0", fontSize: "0.8rem", color: "#94a3b8" }}>Payment Successful.</p>
-                          
-                          <div style={{ display: "flex", gap: "10px" }}>
-                            <button
-                              onClick={() => handleJoin(appt)}
-                              className="btn-join-consult"
-                              style={{ flex: 1 }}
-                            >
-                              <RiDiscussLine /> Join Consultation
-                            </button>
-                            <button
-                              onClick={() => handleCancel(appt._id)}
-                              className="btn-cancel-appt"
-                            >
-                              Cancel
-                            </button>
+                  {/* 📋 History Tab Actions */}
+                  {activeTab === "history" && appt.appointmentStatus === "completed" && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", width: "100%" }}>
+                      <div className="card-actions-row border-top" style={{ paddingTop: "10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: "0.85rem", color: "#10b981", fontWeight: "700", display: "flex", alignItems: "center", gap: "4px" }}>
+                          <RiCheckboxCircleLine /> Session Completed
+                        </span>
+                        <button
+                          onClick={() => setExpandedReportId(expandedReportId === appt._id ? null : appt._id)}
+                          className="btn-table-view"
+                          style={{ padding: "4px 8px", fontSize: "0.78rem" }}
+                        >
+                          {expandedReportId === appt._id ? "Hide Report ▲" : "View Clinical Report ▼"}
+                        </button>
+                      </div>
+                      
+                      {expandedReportId === appt._id && (
+                        <div className="clinical-report-card glass-panel" style={{ padding: "12px", background: "rgba(15, 23, 42, 0.3)", borderRadius: "8px", border: "1px solid rgba(255, 255, 255, 0.05)", fontSize: "0.82rem" }}>
+                          <h4 style={{ margin: "0 0 8px 0", color: "#38bdf8", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: "4px" }}>🩺 Clinical Report</h4>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                            <div>
+                              <strong style={{ color: "#94a3b8" }}>Observations:</strong>
+                              <p style={{ margin: "2px 0 0 0", color: "#cbd5e1" }}>{appt.doctorNotes || "No notes logged by attending doctor."}</p>
+                            </div>
+                            <div style={{ marginTop: "4px" }}>
+                              <strong style={{ color: "#94a3b8" }}>Prescriptions:</strong>
+                              <p style={{ margin: "2px 0 0 0", color: "#34d399", fontWeight: "600" }}>{appt.prescriptions || "No prescriptions logged."}</p>
+                            </div>
+                            <div style={{ marginTop: "4px" }}>
+                              <strong style={{ color: "#94a3b8" }}>Follow-up Advice:</strong>
+                              <p style={{ margin: "2px 0 0 0", color: "#cbd5e1" }}>{appt.followUp || "None specified."}</p>
+                            </div>
+                            <div style={{ marginTop: "4px" }}>
+                              <strong style={{ color: "#94a3b8" }}>Consultation Fee:</strong>
+                              <p style={{ margin: "2px 0 0 0", color: "#38bdf8", fontWeight: "700" }}>₹{appt.amount} (Paid)</p>
+                            </div>
                           </div>
                         </div>
                       )}
                     </div>
                   )}
 
-                  {/* Past Tab display */}
-                  {activeTab === "past" && appt.appointmentStatus === "completed" && (
-                    <div className="card-actions-row border-top" style={{ paddingTop: "10px", justifyContent: "flex-end" }}>
-                      <span style={{ fontSize: "0.85rem", color: "#10b981", fontWeight: "700", display: "flex", alignItems: "center", gap: "4px" }}>
-                        <RiCheckboxCircleLine /> Session Completed
-                      </span>
-                    </div>
-                  )}
-
-                  {activeTab === "past" && appt.appointmentStatus === "cancelled" && (
-                    <div className="card-actions-row border-top" style={{ paddingTop: "10px", flexDirection: "column", alignItems: "flex-start" }}>
-                      <span style={{ fontSize: "0.85rem", color: "#ef4444", fontWeight: "700", display: "flex", alignItems: "center", gap: "4px" }}>
-                        <RiCloseCircleLine /> {appt.doctorDecision === "rejected" ? "Request Rejected" : "Session Cancelled"}
-                      </span>
+                  {activeTab === "history" && appt.appointmentStatus === "cancelled" && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", width: "100%" }}>
+                      <div className="card-actions-row border-top" style={{ paddingTop: "10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: "0.85rem", color: "#ef4444", fontWeight: "700", display: "flex", alignItems: "center", gap: "4px" }}>
+                          <RiCloseCircleLine /> {appt.doctorDecision === "rejected" ? "Request Rejected" : "Session Cancelled"}
+                        </span>
+                      </div>
                       {appt.doctorDecision === "rejected" ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%", marginTop: "6px" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%" }}>
                           <span style={{ fontSize: "0.8rem", color: "#94a3b8" }}>
                             Doctor's reason: "{appt.rejectionReason || "Not specified"}"
                           </span>
-                          <button
-                            onClick={() => navigate("/patient/dashboard")}
-                            className="btn-primary-custom"
-                            style={{ alignSelf: "flex-start", padding: "6px 12px", fontSize: "0.8rem", width: "auto" }}
-                          >
-                            Find Another Doctor
-                          </button>
                         </div>
                       ) : (
-                        <span style={{ fontSize: "0.8rem", color: "#94a3b8", marginTop: "4px" }}>
+                        <span style={{ fontSize: "0.8rem", color: "#94a3b8" }}>
                           Cancelled by Patient
                         </span>
                       )}
@@ -414,8 +459,6 @@ export default function PatientAppointments() {
           )}
         </div>
       </div>
-
-
     </div>
   );
 }

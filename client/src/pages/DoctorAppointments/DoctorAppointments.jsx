@@ -2,21 +2,46 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
-import { getDoctorAppointments, completeAppointment, cancelAppointment, acceptAppointment, rejectAppointment } from "../../services/appointmentService";
+import { getDoctorAppointments, completeAppointment, cancelAppointment, acceptAppointment, rejectAppointment, deleteAppointment } from "../../services/appointmentService";
 import { toast } from "react-hot-toast";
 import { RiCalendarEventLine, RiTimeLine, RiMoneyRupeeCircleLine, RiDiscussLine, RiCheckboxCircleLine, RiCloseCircleLine } from "react-icons/ri";
 import "./DoctorAppointments.css";
+
+const getKolkataDateString = () => {
+  const d = new Date();
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  });
+  return formatter.format(d); // Returns YYYY-MM-DD
+};
 
 export default function DoctorAppointments() {
   const navigate = useNavigate();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("upcoming"); // 'upcoming' or 'past'
+  const [activeTab, setActiveTab] = useState("new"); // 'new', 'paid', 'upcoming', 'attention', 'history'
   const [expandedIntakeId, setExpandedIntakeId] = useState(null);
+  const [expandedReportId, setExpandedReportId] = useState(null);
 
   useEffect(() => {
     loadAppointments();
   }, []);
+
+  const loadAppointments = async () => {
+    try {
+      setLoading(true);
+      const res = await getDoctorAppointments();
+      setAppointments(res.data.appointments || []);
+    } catch (err) {
+      console.error("Failed to load doctor appointments:", err);
+      toast.error("Failed to retrieve patient bookings.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAccept = async (id) => {
     try {
@@ -40,21 +65,7 @@ export default function DoctorAppointments() {
     }
   };
 
-  const loadAppointments = async () => {
-    try {
-      setLoading(true);
-      const res = await getDoctorAppointments();
-      setAppointments(res.data.appointments || []);
-    } catch (err) {
-      console.error("Failed to load doctor appointments:", err);
-      toast.error("Failed to retrieve patient bookings.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleStartConsultation = (appt) => {
-    // Navigate directly to consultation space
     navigate(`/consultation/${appt._id}`);
   };
 
@@ -79,16 +90,35 @@ export default function DoctorAppointments() {
     }
   };
 
-  // Filter appointments
+  // Filter Categories
+  const todayStr = getKolkataDateString();
+
+  const newRequests = appointments.filter(appt =>
+    appt.doctorDecision === "pending" && appt.appointmentStatus !== "cancelled"
+  );
+
+  const paidScheduled = appointments.filter(appt =>
+    appt.doctorDecision === "accepted" && appt.appointmentStatus === "confirmed" && appt.paymentStatus === "paid" && appt.appointmentDate === todayStr
+  );
+
   const upcomingAppointments = appointments.filter(appt =>
-    ["pending", "confirmed"].includes(appt.appointmentStatus)
+    appt.doctorDecision === "accepted" && appt.appointmentStatus === "confirmed" && appt.paymentStatus === "paid" && appt.appointmentDate > todayStr
   );
 
-  const pastAppointments = appointments.filter(appt =>
-    ["completed", "cancelled"].includes(appt.appointmentStatus)
+  const attentionAppointments = appointments.filter(appt =>
+    appt.doctorDecision === "accepted" && appt.paymentStatus === "pending" && appt.appointmentStatus !== "cancelled"
   );
 
-  const displayedAppointments = activeTab === "upcoming" ? upcomingAppointments : pastAppointments;
+  const historyAppointments = appointments.filter(appt =>
+    appt.appointmentStatus === "completed" || appt.appointmentStatus === "cancelled" || appt.doctorDecision === "rejected"
+  );
+
+  let displayedAppointments = [];
+  if (activeTab === "new") displayedAppointments = newRequests;
+  else if (activeTab === "paid") displayedAppointments = paidScheduled;
+  else if (activeTab === "upcoming") displayedAppointments = upcomingAppointments;
+  else if (activeTab === "attention") displayedAppointments = attentionAppointments;
+  else if (activeTab === "history") displayedAppointments = historyAppointments;
 
   return (
     <div className="doctor-appointments-layout">
@@ -103,18 +133,36 @@ export default function DoctorAppointments() {
             <p>View your scheduled slots, start consultation channels, and manage completed sessions.</p>
           </div>
 
-          <div className="doctor-appointments-tabs">
+          <div className="doctor-appointments-tabs" style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "20px" }}>
+            <button
+              onClick={() => setActiveTab("new")}
+              className={`tab-btn ${activeTab === "new" ? "active" : ""}`}
+            >
+              New Requests ({newRequests.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("paid")}
+              className={`tab-btn ${activeTab === "paid" ? "active" : ""}`}
+            >
+              Paid & Scheduled ({paidScheduled.length})
+            </button>
             <button
               onClick={() => setActiveTab("upcoming")}
               className={`tab-btn ${activeTab === "upcoming" ? "active" : ""}`}
             >
-              Scheduled consultations ({upcomingAppointments.length})
+              Upcoming ({upcomingAppointments.length})
             </button>
             <button
-              onClick={() => setActiveTab("past")}
-              className={`tab-btn ${activeTab === "past" ? "active" : ""}`}
+              onClick={() => setActiveTab("attention")}
+              className={`tab-btn ${activeTab === "attention" ? "active" : ""}`}
             >
-              Consultation History ({pastAppointments.length})
+              Needs Attention ({attentionAppointments.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("history")}
+              className={`tab-btn ${activeTab === "history" ? "active" : ""}`}
+            >
+              History ({historyAppointments.length})
             </button>
           </div>
 
@@ -123,8 +171,8 @@ export default function DoctorAppointments() {
           ) : displayedAppointments.length === 0 ? (
             <div className="empty-state glass-panel">
               <RiCalendarEventLine style={{ fontSize: "3rem", color: "#475569", marginBottom: "12px" }} />
-              <h3>No Bookings Scheduled</h3>
-              <p>You do not have any {activeTab} patient sessions at the moment.</p>
+              <h3>No Bookings</h3>
+              <p>You do not have any patient sessions in the "{activeTab.toUpperCase()}" category at the moment.</p>
             </div>
           ) : (
             <div className="doctor-appointments-grid">
@@ -149,101 +197,25 @@ export default function DoctorAppointments() {
                     </div>
                   </div>
 
-                  {appt.aiIntake ? (
+                  {appt.aiIntake && (
                     <div className="appt-ai-intake-report border-top" style={{ padding: "12px 0" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                         <span style={{ fontSize: "0.85rem", fontWeight: "700", color: "#38bdf8" }}>🤖 AI Intake Report</span>
                         <div style={{ display: "flex", gap: "6px" }}>
-                          <span className={`status-badge severity-${appt.aiIntake.severity?.toLowerCase()}`} style={{ fontSize: "0.75rem" }}>
-                            {appt.aiIntake.severity} Severity
-                          </span>
-                          <span className={`status-badge risk-${appt.aiIntake.riskLevel?.toLowerCase()}`} style={{ fontSize: "0.75rem" }}>
-                            {appt.aiIntake.riskLevel} Risk
-                          </span>
+                          <span className={`status-badge severity-${appt.aiIntake.severity?.toLowerCase()}`} style={{ fontSize: "0.75rem" }}>{appt.aiIntake.severity}</span>
                         </div>
                       </div>
-
                       <div style={{ fontSize: "0.85rem", color: "#e2e8f0", marginBottom: "6px" }}>
                         <strong>Chief Complaint:</strong> {appt.aiIntake.chiefComplaint}
                       </div>
-
-                      {appt.aiIntake.summary && (
-                        <div style={{ fontSize: "0.85rem", color: "#94a3b8", marginBottom: "6px" }}>
-                          <strong>AI Summary:</strong> <span style={{ color: "#cbd5e1" }}>"{appt.aiIntake.summary}"</span>
-                        </div>
-                      )}
-
-                      {(appt.aiIntake.history || appt.aiIntake.medications) && (
-                        <div style={{ background: "rgba(15, 23, 42, 0.25)", padding: "8px", borderRadius: "6px", fontSize: "0.8rem", color: "#94a3b8", marginBottom: "8px" }}>
-                          {appt.aiIntake.history && <div><strong>History:</strong> {appt.aiIntake.history}</div>}
-                          {appt.aiIntake.medications && <div><strong>Medications:</strong> {appt.aiIntake.medications}</div>}
-                        </div>
-                      )}
-
                       {appt.aiIntake.chatHistory && appt.aiIntake.chatHistory.length > 0 && (
                         <div>
-                          <button
-                            onClick={() => setExpandedIntakeId(expandedIntakeId === appt._id ? null : appt._id)}
-                            style={{
-                              background: "none",
-                              border: "none",
-                              color: "#38bdf8",
-                              fontSize: "0.8rem",
-                              cursor: "pointer",
-                              padding: 0,
-                              fontWeight: "600",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "4px"
-                            }}
-                          >
-                            {expandedIntakeId === appt._id ? "Hide Chat Log ▲" : "View Pre-Intake Chat Log ▼"}
+                          <button onClick={() => setExpandedIntakeId(expandedIntakeId === appt._id ? null : appt._id)} style={{ background: "none", border: "none", color: "#38bdf8", fontSize: "0.8rem", cursor: "pointer", fontWeight: "600" }}>
+                            {expandedIntakeId === appt._id ? "Hide Chat Log ▲" : "View Chat Log ▼"}
                           </button>
-                          
-                          {expandedIntakeId === appt._id && (
-                            <div style={{
-                              maxHeight: "180px",
-                              overflowY: "auto",
-                              background: "rgba(15, 23, 42, 0.4)",
-                              border: "1px solid rgba(255, 255, 255, 0.05)",
-                              borderRadius: "8px",
-                              padding: "10px",
-                              marginTop: "8px",
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: "8px"
-                            }}>
-                              {appt.aiIntake.chatHistory.map((chat, cIdx) => (
-                                <div key={cIdx} style={{ fontSize: "0.78rem" }}>
-                                  <strong style={{ color: chat.sender === "ai" ? "#38bdf8" : "#10b981" }}>
-                                    {chat.sender === "ai" ? "AI Intake" : "Patient"}:
-                                  </strong>
-                                  <p style={{ margin: "2px 0 0", color: "#cbd5e1" }}>{chat.text}</p>
-                                </div>
-                              ))}
-                            </div>
-                          )}
                         </div>
                       )}
                     </div>
-                  ) : (
-                    <>
-                      {appt.symptoms && appt.symptoms.length > 0 && (
-                        <div className="appt-symptoms-list border-top" style={{ padding: "10px 0" }}>
-                          <strong style={{ fontSize: "0.85rem", color: "#94a3b8" }}>Symptoms:</strong>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "4px" }}>
-                            {appt.symptoms.map(s => <span key={s} className="symptom-tag-small">{s}</span>)}
-                          </div>
-                        </div>
-                      )}
-
-                      {appt.medicalNote && (
-                        <div className="appt-note border-top" style={{ padding: "10px 0", fontSize: "0.85rem", color: "#94a3b8" }}>
-                          <strong>Medical Note:</strong>
-                          <p style={{ margin: "4px 0 0", color: "#cbd5e1" }}>"{appt.medicalNote}"</p>
-                        </div>
-                      )}
-                    </>
                   )}
 
                   <div className="card-payment-fee-status border-top" style={{ paddingTop: "12px" }}>
@@ -251,91 +223,58 @@ export default function DoctorAppointments() {
                       <RiMoneyRupeeCircleLine style={{ verticalAlign: "middle", marginRight: "4px" }} />
                       ₹{appt.amount}
                     </div>
-
-                    <div className="badges-group">
-                      <span className={`status-badge ${appt.paymentStatus}`}>
-                        {appt.paymentStatus === "paid" ? "✓ Paid" : "⚠ Unpaid"}
-                      </span>
-                      <span className={`status-badge ${appt.appointmentStatus}`}>
-                        {appt.appointmentStatus}
-                      </span>
-                      {appt.doctorDecision && (
-                        <span className={`status-badge decision-${appt.doctorDecision}`}>
-                          {appt.doctorDecision}
-                        </span>
-                      )}
-                    </div>
                   </div>
 
-                  {/* Actions Row */}
+                  {activeTab === "new" && (
+                    <div className="card-actions-row border-top" style={{ paddingTop: "14px", display: "flex", gap: "10px", width: "100%" }}>
+                      <button onClick={() => handleAccept(appt._id)} className="btn-accept-request" style={{ flex: 1 }}>Accept Request</button>
+                      <button onClick={() => handleReject(appt._id)} className="btn-reject-request" style={{ flex: 1 }}>Reject</button>
+                    </div>
+                  )}
+
+                  {activeTab === "paid" && (
+                    <div className="card-actions-row border-top" style={{ paddingTop: "14px", display: "flex", gap: "10px", width: "100%" }}>
+                      <button onClick={() => handleStartConsultation(appt)} className="btn-start-consult" style={{ flex: 1 }}><RiDiscussLine /> Start Consult</button>
+                      <button onClick={() => handleComplete(appt._id)} className="btn-complete-appt" style={{ flex: 1 }}>Complete</button>
+                    </div>
+                  )}
+
                   {activeTab === "upcoming" && (
-                    <div className="card-actions-row border-top" style={{ paddingTop: "14px" }}>
-                      {appt.doctorDecision === "pending" ? (
-                        <div style={{ display: "flex", gap: "10px", width: "100%" }}>
-                          <button
-                            onClick={() => handleAccept(appt._id)}
-                            className="btn-accept-request"
-                          >
-                            Accept Request
-                          </button>
-                          <button
-                            onClick={() => handleReject(appt._id)}
-                            className="btn-reject-request"
-                          >
-                            Reject
-                          </button>
+                    <div className="card-actions-row border-top" style={{ paddingTop: "14px", display: "flex", flexDirection: "column", width: "100%" }}>
+                      <span style={{ fontSize: "0.85rem", color: "#38bdf8", fontWeight: "600", marginBottom: "6px", textAlign: "center" }}>📅 Confirmed for Future Date</span>
+                      <button disabled className="btn-start-consult" style={{ opacity: 0.5, cursor: "not-allowed", width: "100%", justifyContent: "center" }}>Consultation Room Locked</button>
+                    </div>
+                  )}
+
+                  {activeTab === "attention" && (
+                    <div className="card-actions-row border-top" style={{ paddingTop: "14px", display: "flex", flexDirection: "column", width: "100%" }}>
+                      <span style={{ fontSize: "0.85rem", color: "#f59e0b", fontStyle: "italic", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px", justifyContent: "center" }}>⏳ Accepted, Waiting for Patient Payment</span>
+                      <button onClick={() => handleCancel(appt._id)} className="btn-cancel-appt" style={{ marginTop: "10px", width: "100%" }}>Cancel Slot</button>
+                    </div>
+                  )}
+
+                  {activeTab === "history" && appt.appointmentStatus === "completed" && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", width: "100%" }}>
+                      <div className="card-actions-row border-top" style={{ paddingTop: "10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: "0.85rem", color: "#10b981", fontWeight: "700", display: "flex", alignItems: "center", gap: "4px" }}><RiCheckboxCircleLine /> Session Completed</span>
+                        <button onClick={() => setExpandedReportId(expandedReportId === appt._id ? null : appt._id)} className="btn-table-view" style={{ padding: "4px 8px", fontSize: "0.78rem" }}>{expandedReportId === appt._id ? "Hide Report ▲" : "View Clinical Report ▼"}</button>
+                      </div>
+                      {expandedReportId === appt._id && (
+                        <div className="clinical-report-card glass-panel" style={{ padding: "12px", background: "rgba(15, 23, 42, 0.3)", borderRadius: "8px", border: "1px solid rgba(255, 255, 255, 0.05)", fontSize: "0.82rem" }}>
+                          <h4 style={{ margin: "0 0 8px 0", color: "#38bdf8" }}>🩺 Attending Doctor Triage Report</h4>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                            <div><strong style={{ color: "#94a3b8" }}>Chief Complaint:</strong><p style={{ margin: "2px 0 0 0", color: "#cbd5e1" }}>{appt.aiIntake?.chiefComplaint || "Not specified."}</p></div>
+                            <div><strong style={{ color: "#94a3b8" }}>AI Summary:</strong><p style={{ margin: "2px 0 0 0", color: "#cbd5e1" }}>{appt.aiIntake?.summary || "No AI summary available."}</p></div>
+                            <div><strong style={{ color: "#94a3b8" }}>Prescribed Medications:</strong><p style={{ margin: "2px 0 0 0", color: "#34d399", fontWeight: "600" }}>{appt.prescriptions || "No prescriptions logged."}</p></div>
+                          </div>
                         </div>
-                      ) : appt.appointmentStatus === "confirmed" ? (
-                        <>
-                          <button
-                            onClick={() => handleStartConsultation(appt)}
-                            className="btn-start-consult"
-                          >
-                            <RiDiscussLine /> Start Consult
-                          </button>
-                          <button
-                            onClick={() => handleComplete(appt._id)}
-                            className="btn-complete-appt"
-                          >
-                            Complete
-                          </button>
-                        </>
-                      ) : (
-                        <span style={{ fontSize: "0.85rem", color: "#f59e0b", fontStyle: "italic", alignSelf: "center", marginRight: "auto" }}>
-                          Waiting for patient payment
-                        </span>
-                      )}
-
-                      {appt.doctorDecision !== "pending" && (
-                        <button
-                          onClick={() => handleCancel(appt._id)}
-                          className="btn-cancel-appt"
-                          style={{ marginLeft: appt.appointmentStatus === "confirmed" ? "0" : "auto" }}
-                        >
-                          Cancel
-                        </button>
                       )}
                     </div>
                   )}
 
-                  {activeTab === "past" && appt.appointmentStatus === "completed" && (
-                    <div className="card-actions-row border-top" style={{ paddingTop: "10px", justifyContent: "flex-end" }}>
-                      <span style={{ fontSize: "0.85rem", color: "#10b981", fontWeight: "700", display: "flex", alignItems: "center", gap: "4px" }}>
-                        <RiCheckboxCircleLine /> Session Completed
-                      </span>
-                    </div>
-                  )}
-
-                  {activeTab === "past" && appt.appointmentStatus === "cancelled" && (
-                    <div className="card-actions-row border-top" style={{ paddingTop: "10px", flexDirection: "column", alignItems: "flex-end" }}>
-                      <span style={{ fontSize: "0.85rem", color: "#ef4444", fontWeight: "700", display: "flex", alignItems: "center", gap: "4px" }}>
-                        <RiCloseCircleLine /> {appt.doctorDecision === "rejected" ? "Request Rejected" : "Session Cancelled"}
-                      </span>
-                      {appt.rejectionReason && (
-                        <span style={{ fontSize: "0.8rem", color: "#94a3b8", marginTop: "4px" }}>
-                          Reason: "{appt.rejectionReason}"
-                        </span>
-                      )}
+                  {activeTab === "history" && appt.appointmentStatus === "cancelled" && (
+                    <div className="card-actions-row border-top" style={{ paddingTop: "10px", display: "flex", flexDirection: "column", alignItems: "flex-start", width: "100%" }}>
+                      <span style={{ fontSize: "0.85rem", color: "#ef4444", fontWeight: "700", display: "flex", alignItems: "center", gap: "4px" }}><RiCloseCircleLine /> {appt.doctorDecision === "rejected" ? "Request Rejected" : "Session Cancelled"}</span>
                     </div>
                   )}
                 </div>

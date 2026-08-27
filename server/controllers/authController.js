@@ -3,6 +3,24 @@ import bcrypt from "bcryptjs";
 import generateToken from "../utils/generateToken.js";
 import { checkDoctorAvailability } from "../utils/timeHelper.js";
 
+const cityCoordinates = {
+  "ghaziabad": [77.4224, 28.6692],
+  "delhi": [77.2090, 28.6139],
+  "noida": [77.3910, 28.5355],
+  "mumbai": [72.8777, 19.0760],
+  "bangalore": [77.5946, 12.9716],
+  "bengaluru": [77.5946, 12.9716],
+  "hyderabad": [78.4867, 17.3850],
+  "chennai": [80.2707, 13.0827],
+  "kolkata": [88.3639, 22.5726],
+  "pune": [73.8567, 18.5204],
+};
+
+const getCoordinatesForCity = (cityName) => {
+  const cleanName = cityName ? cityName.toLowerCase().trim() : "ghaziabad";
+  return cityCoordinates[cleanName] || [77.4224, 28.6692];
+};
+
 // ================= REGISTER =================
 export const register = async (req, res) => {
   try {
@@ -76,7 +94,15 @@ export const register = async (req, res) => {
       role: role || "patient",
       specialization: role === "doctor" ? (specialization || "") : "",
       experience: role === "doctor" ? (Number(experience) || 0) : 0,
-      location: role === "doctor" ? (location || "") : "",
+      location: role === "doctor" ? {
+        name: location || "Ghaziabad",
+        type: "Point",
+        coordinates: getCoordinatesForCity(location),
+      } : {
+        name: "Ghaziabad",
+        type: "Point",
+        coordinates: [77.4224, 28.6692]
+      },
       consultationFee: role === "doctor" ? (Number(consultationFee) || 0) : 0,
       about: role === "doctor" ? (about || "") : "",
       isOnline: false,
@@ -245,10 +271,16 @@ export const getDoctors = async (req, res) => {
   try {
     const doctors = await User.find({ role: "doctor" }).select("-password");
     
-    // Filter doctors by current availability in Asia/Kolkata timezone
-    const availableDoctors = doctors.filter((doctor) =>
-      checkDoctorAvailability(doctor.availability)
-    );
+    // Filter doctors who have at least one active availability range on any day
+    const availableDoctors = doctors.filter((doctor) => {
+      const avail = doctor.availability;
+      if (!avail) return false;
+      const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+      return DAYS.some(day => {
+        const ranges = avail instanceof Map ? avail.get(day) : avail[day];
+        return ranges && ranges.length > 0;
+      });
+    });
 
     return res.status(200).json({
       success: true,
@@ -298,7 +330,13 @@ export const updateProfile = async (req, res) => {
 
     user.specialization = specialization !== undefined ? specialization : user.specialization;
     user.experience = experience !== undefined ? Number(experience) : user.experience;
-    user.location = location !== undefined ? location : user.location;
+    if (location !== undefined) {
+      user.location = {
+        name: location || "Ghaziabad",
+        type: "Point",
+        coordinates: getCoordinatesForCity(location),
+      };
+    }
     user.consultationFee = consultationFee !== undefined ? Number(consultationFee) : user.consultationFee;
     user.about = about !== undefined ? about : user.about;
 
