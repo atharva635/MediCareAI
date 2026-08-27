@@ -38,6 +38,7 @@ export default function BookingModal({ doctor, onClose }) {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [isAiTyping, setIsAiTyping] = useState(false);
   const chatEndRef = useRef(null);
+  const dateInputRef = useRef(null);
 
   const intakeQuestions = [
     "What symptoms are you experiencing?",
@@ -232,14 +233,15 @@ export default function BookingModal({ doctor, onClose }) {
                 <label className="booking-label">
                   <RiCalendarEventLine /> Choose Date
                 </label>
-                <input 
-                  type="date"
-                  className="booking-date-input"
-                  min={getTodayString()}
-                  max={getMaxDateString()}
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                />
+                <input
+              type="date"
+              className="booking-date-input"
+              min={getTodayString()}
+              max={getMaxDateString()}
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              onClick={(e) => e.currentTarget.showPicker?.()}
+              />
               </div>
 
               <div className="slots-section">
