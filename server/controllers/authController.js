@@ -388,7 +388,7 @@ export const updateLocation = async (req, res) => {
     }
 
     const user = await User.findByIdAndUpdate(
-      req.user._id,
+      req.user.id,
       {
         location: {
           type: "Point",
