@@ -18,11 +18,11 @@ import {
 } from "../services/appointmentService";
 import "./BookingModal.css";
 
-export default function BookingModal({ doctor, onClose, initialDate = "", initialTime = "" }) {
+export default function BookingModal({ doctor, onClose }) {
   const navigate = useNavigate();
   const [step, setStep] = useState("select"); // "select", "symptoms", "success"
-  const [selectedDate, setSelectedDate] = useState(initialDate);
-  const [selectedTime, setSelectedTime] = useState(initialTime);
+  const [selectedDate, setSelectedDate] = useState("");
+  const [selectedTime, setSelectedTime] = useState("");
   const [slots, setSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [appointment, setAppointment] = useState(null);
@@ -75,10 +75,7 @@ export default function BookingModal({ doctor, onClose, initialDate = "", initia
   useEffect(() => {
     if (selectedDate) {
       fetchAvailableSlots();
-      // Only reset selected slot if we changed the date from the initial pre-filled date
-      if (selectedDate !== initialDate) {
-        setSelectedTime("");
-      }
+      setSelectedTime(""); // Reset selected slot when date changes
     } else {
       setSlots([]);
     }

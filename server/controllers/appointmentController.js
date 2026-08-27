@@ -4,7 +4,7 @@ import { sendEmailNotification } from "../services/emailService.js";
 import { analyzeIntakeChat } from "../services/aiService.js";
 
 // Helper: Normalize time string to uniform "HH:MM AM/PM" format for consistent comparisons
-export const formatTime = (timeStr) => {
+const formatTime = (timeStr) => {
   try {
     const parts = timeStr.trim().split(/\s+/);
     if (parts.length < 2) return timeStr.trim();
@@ -62,26 +62,6 @@ export const createAppointment = async (req, res) => {
       });
     }
 
-    // Past date prevention (backend)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const dateParts = appointmentDate.split("-");
-    if (dateParts.length !== 3) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid date format. Use YYYY-MM-DD",
-      });
-    }
-    const selectedDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
-    selectedDate.setHours(0, 0, 0, 0);
-
-    if (selectedDate < today) {
-      return res.status(400).json({
-        success: false,
-        message: "Past dates are not allowed",
-      });
-    }
-
     // Find Doctor details to verify and fetch consultation fee
     const doctorUser = await User.findById(doctor);
     if (!doctorUser || doctorUser.role !== "doctor") {
@@ -92,16 +72,6 @@ export const createAppointment = async (req, res) => {
     }
 
     const normalizedTime = formatTime(appointmentTime);
-
-    // Verify slot is actually configured by doctor as available for this date
-    const availabilityMap = doctorUser.availability || new Map();
-    const configuredSlots = availabilityMap instanceof Map ? availabilityMap.get(appointmentDate) : availabilityMap[appointmentDate];
-    if (!configuredSlots || !configuredSlots.map(t => formatTime(t)).includes(normalizedTime)) {
-      return res.status(400).json({
-        success: false,
-        message: "This slot is not available for consultation.",
-      });
-    }
 
     // Check if slot is already booked (confirmed or pending)
     const existingAppointment = await Appointment.findOne({
@@ -368,12 +338,12 @@ export const saveAvailability = async (req, res) => {
       });
     }
 
-    const { availability, date, slots } = req.body;
+    const { availability } = req.body;
 
-    if (!availability && !date) {
+    if (!availability) {
       return res.status(400).json({
         success: false,
-        message: "Either availability Map or date is required",
+        message: "Availability object is required",
       });
     }
 
@@ -385,65 +355,7 @@ export const saveAvailability = async (req, res) => {
       });
     }
 
-    if (!user.availability) {
-      user.availability = new Map();
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (date) {
-      // Validate date key format (YYYY-MM-DD)
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid date format. Use YYYY-MM-DD",
-        });
-      }
-      
-      const [year, month, day] = date.split("-").map(Number);
-      const selectedDate = new Date(year, month - 1, day);
-      selectedDate.setHours(0, 0, 0, 0);
-
-      if (selectedDate < today) {
-        return res.status(400).json({
-          success: false,
-          message: "Past dates are not allowed",
-        });
-      }
-
-      if (!slots || slots.length === 0) {
-        user.availability.delete(date);
-      } else {
-        const normalizedSlots = slots.map(s => formatTime(s));
-        user.availability.set(date, normalizedSlots);
-      }
-    } else if (availability) {
-      // Validate all keys in availability Map
-      const availabilityKeys = Object.keys(availability);
-      for (const dateKey of availabilityKeys) {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
-          return res.status(400).json({
-            success: false,
-            message: `Invalid date format: ${dateKey}. Use YYYY-MM-DD`,
-          });
-        }
-        
-        const [year, month, day] = dateKey.split("-").map(Number);
-        const selectedDate = new Date(year, month - 1, day);
-        selectedDate.setHours(0, 0, 0, 0);
-
-        if (selectedDate < today) {
-          return res.status(400).json({
-            success: false,
-            message: `Past date ${dateKey} is not allowed`,
-          });
-        }
-      }
-
-      user.availability = availability;
-    }
-
+    user.availability = availability;
     await user.save();
 
     res.json({
@@ -498,7 +410,15 @@ export const getAvailableSlots = async (req, res) => {
       });
     }
 
-    // Determine and validate date
+    const doctor = await User.findById(doctorId);
+    if (!doctor || doctor.role !== "doctor") {
+      return res.status(404).json({
+        success: false,
+        message: "Doctor not found",
+      });
+    }
+
+    // Determine day of the week
     const dateParts = date.split("-");
     if (dateParts.length !== 3) {
       return res.status(400).json({
@@ -510,36 +430,37 @@ export const getAvailableSlots = async (req, res) => {
     const month = parseInt(dateParts[1]) - 1;
     const day = parseInt(dateParts[2]);
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     const dateObj = new Date(year, month, day);
-    dateObj.setHours(0, 0, 0, 0);
+    const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const dayName = daysOfWeek[dateObj.getDay()];
 
-    if (dateObj < today) {
-      return res.status(400).json({
-        success: false,
-        message: "Past dates are not allowed",
-      });
-    }
-
-    const doctor = await User.findById(doctorId);
-    if (!doctor || doctor.role !== "doctor") {
-      return res.status(404).json({
-        success: false,
-        message: "Doctor not found",
-      });
-    }
-
-    // Get doctor's availability for that specific date
+    // Get doctor's availability for that dayName
     const availabilityMap = doctor.availability || new Map();
-    const slots = availabilityMap instanceof Map ? availabilityMap.get(date) : availabilityMap[date];
+    // Mongoose Map support get()
+    const ranges = availabilityMap instanceof Map ? availabilityMap.get(dayName) : availabilityMap[dayName];
 
-    if (!slots || slots.length === 0) {
+    if (!ranges || ranges.length === 0) {
       return res.json({
         success: true,
         availableSlots: [],
-        message: `No availability set for ${date}`,
+        message: `No availability set for ${dayName}`,
       });
+    }
+
+    // Generate potential 30-minute slots from set ranges
+    const slots = [];
+    for (const range of ranges) {
+      const parts = range.split("-");
+      if (parts.length !== 2) continue;
+      const startStr = parts[0].trim();
+      const endStr = parts[1].trim();
+
+      const startMinutes = parseTimeToMinutes(startStr);
+      const endMinutes = parseTimeToMinutes(endStr);
+
+      for (let time = startMinutes; time < endMinutes; time += 30) {
+        slots.push(minutesToTimeString(time));
+      }
     }
 
     // Fetch already booked slots for this doctor on this date (not cancelled)
@@ -559,6 +480,7 @@ export const getAvailableSlots = async (req, res) => {
 
     res.json({
       success: true,
+      dayName,
       availableSlots,
     });
   } catch (error) {

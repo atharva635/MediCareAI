@@ -1,8 +1,6 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import generateToken from "../utils/generateToken.js";
-import Appointment from "../models/Appointment.js";
-import { formatTime } from "./appointmentController.js";
 
 // ================= REGISTER =================
 export const register = async (req, res) => {
@@ -243,68 +241,7 @@ export const getConsultants = async (req, res) => {
 // ================= GET DOCTORS =================
 export const getDoctors = async (req, res) => {
   try {
-    const { date } = req.query; // Expects YYYY-MM-DD
     const doctors = await User.find({ role: "doctor", isOnline: true }).select("-password");
-
-    if (date) {
-      // Validate date key format (YYYY-MM-DD)
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid date format. Use YYYY-MM-DD",
-        });
-      }
-
-      // Past date prevention
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const [year, month, day] = date.split("-").map(Number);
-      const selectedDate = new Date(year, month - 1, day);
-      selectedDate.setHours(0, 0, 0, 0);
-
-      if (selectedDate < today) {
-        return res.status(400).json({
-          success: false,
-          message: "Past dates are not allowed",
-        });
-      }
-
-      const filteredDoctors = [];
-
-      for (const doc of doctors) {
-        const availabilityMap = doc.availability || new Map();
-        const configuredSlots = availabilityMap instanceof Map ? availabilityMap.get(date) : availabilityMap[date];
-
-        if (configuredSlots && configuredSlots.length > 0) {
-          // Fetch already booked slots for this doctor on this date
-          const bookedAppointments = await Appointment.find({
-            doctor: doc._id,
-            appointmentDate: date,
-            appointmentStatus: { $in: ["pending", "confirmed", "completed"] },
-          });
-
-          const bookedTimes = bookedAppointments.map((app) => formatTime(app.appointmentTime));
-
-          // Filter slots not in booked list
-          const availableSlots = configuredSlots.filter((slot) => {
-            const normalizedSlot = formatTime(slot);
-            return !bookedTimes.includes(normalizedSlot);
-          });
-
-          if (availableSlots.length > 0) {
-            const docObj = doc.toObject();
-            docObj.availableSlotsToday = availableSlots;
-            filteredDoctors.push(docObj);
-          }
-        }
-      }
-
-      return res.status(200).json({
-        success: true,
-        doctors: filteredDoctors,
-      });
-    }
-
     return res.status(200).json({
       success: true,
       doctors,
