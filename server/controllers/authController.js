@@ -250,9 +250,13 @@ export const getDoctors = async (req, res) => {
     const { latitude, longitude } = req.query;
     let doctors;
 
+    console.log("DEBUG: getDoctors query params:", { latitude, longitude });
+
     if (latitude && longitude && !Number.isNaN(Number(latitude)) && !Number.isNaN(Number(longitude))) {
       const lat = Number(latitude);
       const lng = Number(longitude);
+      
+      console.log(`DEBUG: Running geoNear aggregation near coordinates: lng=${lng}, lat=${lat}`);
       
       doctors = await User.aggregate([
         {
@@ -276,13 +280,30 @@ export const getDoctors = async (req, res) => {
         },
       ]);
     } else {
+      console.log("DEBUG: Running standard find query for role: doctor");
       doctors = await User.find({ role: "doctor" }).select("-password").lean();
     }
+
+    console.log(`DEBUG: Database query returned ${doctors.length} doctors.`);
+    
+    // Log individual doctor details and their availability status
+    doctors.forEach((doc, idx) => {
+      console.log(`DEBUG doctor [${idx}]: Name="${doc.fullName}", locationName="${doc.locationName}", location=`, JSON.stringify(doc.location));
+      console.log(`DEBUG doctor [${idx}]: availability=`, JSON.stringify(doc.availability));
+      try {
+        const isAvail = checkDoctorAvailability(doc.availability);
+        console.log(`DEBUG doctor [${idx}]: checkDoctorAvailability result = ${isAvail}`);
+      } catch (err) {
+        console.error(`DEBUG doctor [${idx}]: availability check failed with error:`, err);
+      }
+    });
 
     // Filter doctors by current availability in Asia/Kolkata timezone
     const availableDoctors = doctors.filter((doctor) =>
       checkDoctorAvailability(doctor.availability)
     );
+
+    console.log(`DEBUG: Returning ${availableDoctors.length} available doctors.`);
 
     return res.status(200).json({
       success: true,
