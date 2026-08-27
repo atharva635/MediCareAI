@@ -15,6 +15,7 @@ export default function PatientAppointments() {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("upcoming"); // 'upcoming' or 'past'
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   // Payment states
   const { user } = useSelector((state) => state.auth);
@@ -22,6 +23,14 @@ export default function PatientAppointments() {
 
   useEffect(() => {
     loadAppointments();
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 30000);
+
+    return () => clearInterval(timer);
   }, []);
 
   const loadAppointments = async () => {
@@ -128,13 +137,48 @@ export default function PatientAppointments() {
     navigate(`/consultation/${appt._id}`);
   };
 
+  const formatAppointmentDate = (date) => {
+    if (!date) return "N/A";
+
+    return new Date(`${date}T00:00:00`).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const isAppointmentPast = (appt) => {
+    if (!appt.appointmentDate || !appt.appointmentTime) return false;
+
+    const [time, modifier] = appt.appointmentTime.split(" ");
+    let [hours, minutes] = time.split(":").map(Number);
+
+    if (modifier === "PM" && hours !== 12) {
+      hours += 12;
+    }
+    if (modifier === "AM" && hours === 12) {
+      hours = 0;
+    }
+
+    const appointmentDateTime = new Date(`${appt.appointmentDate}T00:00:00`);
+    appointmentDateTime.setHours(hours, minutes, 0, 0);
+
+    return appointmentDateTime <= currentTime;
+  };
+
   // Filter appointments
-  const upcomingAppointments = appointments.filter(appt =>
-    (appt.appointmentStatus === "pending" || appt.appointmentStatus === "confirmed") && appt.doctorDecision !== "rejected"
+  const upcomingAppointments = appointments.filter((appt) =>
+    (appt.appointmentStatus === "pending" ||
+      appt.appointmentStatus === "confirmed") &&
+    appt.doctorDecision !== "rejected" &&
+    !isAppointmentPast(appt)
   );
 
-  const pastAppointments = appointments.filter(appt =>
-    appt.appointmentStatus === "completed" || appt.appointmentStatus === "cancelled" || appt.doctorDecision === "rejected"
+  const pastAppointments = appointments.filter((appt) =>
+    appt.appointmentStatus === "completed" ||
+    appt.appointmentStatus === "cancelled" ||
+    appt.doctorDecision === "rejected" ||
+    isAppointmentPast(appt)
   );
 
   const displayedAppointments = activeTab === "upcoming" ? upcomingAppointments : pastAppointments;
@@ -190,7 +234,7 @@ export default function PatientAppointments() {
                   <div className="card-schedule-info border-top">
                     <div className="schedule-row">
                       <RiCalendarEventLine className="sched-icon" />
-                      <span>{appt.appointmentDate}</span>
+                      <span>{formatAppointmentDate(appt.appointmentDate)}</span>
                     </div>
                     <div className="schedule-row">
                       <RiTimeLine className="sched-icon" />
