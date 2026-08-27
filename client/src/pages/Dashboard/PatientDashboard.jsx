@@ -112,6 +112,9 @@ export default function PatientDashboard() {
     return ((sum % 4) + 1.2).toFixed(1);
   };
 
+  const onlineDoctors = doctors.filter((doc) => checkAvailability(doc.availability));
+  const offlineDoctors = doctors.filter((doc) => !checkAvailability(doc.availability));
+
   if (loading) {
     return <Loader />;
   }
@@ -135,37 +138,39 @@ export default function PatientDashboard() {
             </div>
           </div>
 
+          {/* Section 1: Available Now */}
           <div className="dashboard-discovery-section">
             <div className="section-header-row">
               <h2 className="section-title">Attending Doctors Available Now</h2>
-              <span className="live-count-badge">🟢 {doctors.length} Available Now</span>
+              <span className="live-count-badge" style={{ background: "rgba(16, 185, 129, 0.15)", color: "#10b981" }}>
+                🟢 {onlineDoctors.length} Online
+              </span>
             </div>
 
-            {doctors.length === 0 ? (
-              <div className="empty-doctors-state glass-panel">
-                <RiHeartPulseLine className="pulse-icon-empty" />
-                <h3>No Doctors Currently Available</h3>
-                <p>No physicians are currently available for consultation. Please wait or check back shortly.</p>
+            {onlineDoctors.length === 0 ? (
+              <div className="empty-doctors-state glass-panel" style={{ padding: "30px", textAlign: "center", color: "#64748b" }}>
+                <RiHeartPulseLine className="pulse-icon-empty" style={{ fontSize: "2.5rem", color: "#475569", marginBottom: "10px" }} />
+                <h3>No Doctors Online Now</h3>
+                <p>No clinicians are currently active. Please check "Book for Later" below or check back shortly.</p>
               </div>
             ) : (
               <div className="doctors-discovery-grid">
-                 {doctors.map((doc) => {
+                {onlineDoctors.map((doc) => {
                   const distance = getStableDistance(doc._id);
-                  const isAvailable = checkAvailability(doc.availability);
                   return (
                     <div key={doc._id} className="patient-doctor-card glass-panel animate-slide">
                       <div className="doctor-avatar-box">👨‍⚕️</div>
                       <div className="doctor-card-content">
                         <span className="card-avail-badge" style={{
-                          background: isAvailable ? "rgba(16, 185, 129, 0.15)" : "rgba(245, 158, 11, 0.15)",
-                          color: isAvailable ? "#10b981" : "#f59e0b",
-                          border: isAvailable ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid rgba(245, 158, 11, 0.3)",
+                          background: "rgba(16, 185, 129, 0.15)",
+                          color: "#10b981",
+                          border: "1px solid rgba(16, 185, 129, 0.3)",
                           padding: "4px 8px",
                           borderRadius: "6px",
                           fontSize: "0.75rem",
                           fontWeight: "700"
                         }}>
-                          {isAvailable ? "🟢 AVAILABLE NOW" : "📅 BOOKING ACTIVE"}
+                          🟢 AVAILABLE NOW
                         </span>
                         <h3>{doc.fullName}</h3>
                         <p className="card-spec-text">{doc.specialization || "General Medicine"}</p>
@@ -224,6 +229,97 @@ export default function PatientDashboard() {
               </div>
             )}
           </div>
+
+          {/* Section 2: Book for Later */}
+          <div className="dashboard-discovery-section" style={{ marginTop: "40px" }}>
+            <div className="section-header-row">
+              <h2 className="section-title">📅 Book for Later / Consultation Schedules</h2>
+              <span className="live-count-badge" style={{ background: "rgba(56, 189, 248, 0.15)", color: "#38bdf8" }}>
+                Accepting Bookings
+              </span>
+            </div>
+
+            {offlineDoctors.length === 0 ? (
+              <div className="empty-doctors-state glass-panel" style={{ padding: "30px", textAlign: "center", color: "#64748b" }}>
+                <p>No other clinicians are registered under the booking schedules.</p>
+              </div>
+            ) : (
+              <div className="doctors-discovery-grid">
+                {offlineDoctors.map((doc) => {
+                  const distance = getStableDistance(doc._id);
+                  return (
+                    <div key={doc._id} className="patient-doctor-card glass-panel animate-slide">
+                      <div className="doctor-avatar-box" style={{ background: "rgba(255,255,255,0.03)" }}>👨‍⚕️</div>
+                      <div className="doctor-card-content">
+                        <span className="card-avail-badge" style={{
+                          background: "rgba(245, 158, 11, 0.15)",
+                          color: "#f59e0b",
+                          border: "1px solid rgba(245, 158, 11, 0.3)",
+                          padding: "4px 8px",
+                          borderRadius: "6px",
+                          fontSize: "0.75rem",
+                          fontWeight: "700"
+                        }}>
+                          📅 BOOKING ACTIVE
+                        </span>
+                        <h3>{doc.fullName}</h3>
+                        <p className="card-spec-text">{doc.specialization || "General Medicine"}</p>
+                        
+                        <div className="card-ratings">
+                          <RiStarFill className="star-icon" />
+                          <span>{doc.rating ? doc.rating.toFixed(1) : "4.8"}</span>
+                        </div>
+
+                        <div className="card-meta-line border-top">
+                          <span>📍 {doc.location?.name || doc.location || "Ghaziabad"}</span>
+                          <span>📏 {distance} km away</span>
+                        </div>
+
+                        <div className="card-meta-line" style={{ marginTop: "4px" }}>
+                          <span>💼 {doc.experience || 5} years experience</span>
+                          <span className="card-fee">₹{doc.consultationFee || 299}</span>
+                        </div>
+
+                        <div className="card-weekly-avail border-top" style={{ padding: "8px 0", fontSize: "0.75rem" }}>
+                          <span style={{ color: "#94a3b8", fontWeight: "700" }}>Weekly Schedule:</span>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "4px" }}>
+                            {Object.entries(doc.availability || {}).map(([day, ranges]) => {
+                              if (!ranges || ranges.length === 0) return null;
+                              return (
+                                <div key={day} style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1" }}>
+                                  <span>{day}</span>
+                                  <span style={{ color: "#38bdf8", fontWeight: "600" }}>{ranges.join(", ")}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="card-actions-row border-top">
+                          <button 
+                            onClick={() => setSelectedDoctor(doc)} 
+                            className="btn-table-view btn-card-details"
+                          >
+                            View Profile
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setSelectedDoctor(doc);
+                              setShowBookingModal(true);
+                            }}
+                            className="btn-primary-custom btn-card-consult"
+                          >
+                            <RiDiscussLine /> Consult
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
         </div>
       </div>
 
@@ -237,7 +333,7 @@ export default function PatientDashboard() {
         />
       )}
 
-       {showBookingModal && selectedDoctor && (
+      {showBookingModal && selectedDoctor && (
         <BookingModal
           doctor={selectedDoctor}
           onClose={() => {
