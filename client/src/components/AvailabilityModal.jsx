@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
-import { saveAvailability } from "../services/appointmentService";
+import { saveAvailability, getAvailability } from "../services/appointmentService";
 import { toast } from "react-hot-toast";
-import { RiCloseLine, RiCalendarCheckLine } from "react-icons/ri";
+import { RiCloseLine, RiCalendarCheckLine, RiDeleteBin7Line } from "react-icons/ri";
 import "./AvailabilityModal.css";
-
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 const TIME_OPTIONS = [
   "08:00 AM", "08:30 AM", "09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM",
@@ -15,98 +13,110 @@ const TIME_OPTIONS = [
 ];
 
 export default function AvailabilityModal({ doctor, onClose, onSaveSuccess }) {
-  const [availability, setAvailability] = useState({});
-  const [saving, setSaving] = useState(false);
-
-  // Initialize state based on existing doctor's availability Map
-  useEffect(() => {
-    const initial = {};
-    const docAvail = doctor?.availability || {};
-    
-    // Normalize mapping from doctor's availability
-    DAYS.forEach(day => {
-      const ranges = docAvail instanceof Map ? docAvail.get(day) : docAvail[day];
-      if (ranges && ranges.length > 0) {
-        const parts = ranges[0].split("-").map(p => p.trim());
-        if (parts.length === 2) {
-          initial[day] = {
-            active: true,
-            start: parts[0],
-            end: parts[1]
-          };
-          return;
-        }
-      }
-      initial[day] = {
-        active: false,
-        start: "10:00 AM",
-        end: "01:00 PM"
-      };
-    });
-    setAvailability(initial);
-  }, [doctor]);
-
-  const handleToggleActive = (day) => {
-    setAvailability(prev => ({
-      ...prev,
-      [day]: {
-        ...prev[day],
-        active: !prev[day].active
-      }
-    }));
+  const getTodayString = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
-  const handleTimeChange = (day, type, value) => {
-    setAvailability(prev => ({
-      ...prev,
-      [day]: {
-        ...prev[day],
-        [type]: value
+  const [selectedDate, setSelectedDate] = useState(getTodayString());
+  const [selectedSlots, setSelectedSlots] = useState([]);
+  const [fullAvailability, setFullAvailability] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  // Fetch full availability map on mount
+  useEffect(() => {
+    loadAvailability();
+  }, [doctor]);
+
+  const loadAvailability = async () => {
+    try {
+      setLoading(true);
+      const res = await getAvailability(doctor._id);
+      if (res.data.success) {
+        setFullAvailability(res.data.availability || {});
       }
-    }));
+    } catch (err) {
+      console.error("Error loading availability:", err);
+      toast.error("Failed to load availability settings.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Sync selected slots when selectedDate or fullAvailability changes
+  useEffect(() => {
+    if (selectedDate) {
+      const slots = fullAvailability[selectedDate] || [];
+      setSelectedSlots(slots);
+    } else {
+      setSelectedSlots([]);
+    }
+  }, [selectedDate, fullAvailability]);
+
+  const handleToggleSlot = (slot) => {
+    setSelectedSlots((prev) => {
+      if (prev.includes(slot)) {
+        return prev.filter((s) => s !== slot);
+      } else {
+        return [...prev, slot].sort((a, b) => {
+          const parseTime = (t) => {
+            const [time, modifier] = t.split(" ");
+            let [h, m] = time.split(":").map(Number);
+            if (modifier === "PM" && h < 12) h += 12;
+            if (modifier === "AM" && h === 12) h = 0;
+            return h * 60 + m;
+          };
+          return parseTime(a) - parseTime(b);
+        });
+      }
+    });
+  };
+
+  const handleMarkUnavailable = async () => {
+    try {
+      setSaving(true);
+      const res = await saveAvailability({ date: selectedDate, slots: [] });
+      if (res.data.success) {
+        toast.success("Date marked as unavailable! 📅");
+        setFullAvailability(res.data.availability || {});
+        if (onSaveSuccess) {
+          onSaveSuccess(res.data.availability);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to update availability.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validate that end time is strictly after start time for all active days
-    const parseToMinutes = (timeStr) => {
-      const [time, modifier] = timeStr.split(" ");
-      let [hours, minutes] = time.split(":").map(Number);
-      if (modifier === "PM" && hours < 12) hours += 12;
-      if (modifier === "AM" && hours === 12) hours = 0;
-      return hours * 60 + minutes;
-    };
-
-    const formattedAvailability = {};
-    for (const day of DAYS) {
-      const settings = availability[day];
-      if (settings?.active) {
-        const startMin = parseToMinutes(settings.start);
-        const endMin = parseToMinutes(settings.end);
-        if (endMin <= startMin) {
-          toast.error(`End time must be after start time on ${day}`);
-          return;
-        }
-        // Save format: ["10:00 AM - 01:00 PM"]
-        formattedAvailability[day] = [`${settings.start} - ${settings.end}`];
-      } else {
-        // Explicitly clear day if inactive
-        formattedAvailability[day] = [];
-      }
+    if (!selectedDate) {
+      toast.error("Please select a date.");
+      return;
     }
 
     try {
       setSaving(true);
-      const res = await saveAvailability({ availability: formattedAvailability });
-      toast.success("Availability updated successfully! 📅");
-      if (onSaveSuccess) {
-        onSaveSuccess(res.data.availability);
+      const res = await saveAvailability({ date: selectedDate, slots: selectedSlots });
+      if (res.data.success) {
+        toast.success("Availability updated successfully! 📅");
+        setFullAvailability(res.data.availability || {});
+        if (onSaveSuccess) {
+          onSaveSuccess(res.data.availability);
+        }
+        onClose();
       }
-      onClose();
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Failed to update availability.");
+      toast.error(err.response?.data?.message || "Failed to save availability.");
     } finally {
       setSaving(false);
     }
@@ -120,76 +130,66 @@ export default function AvailabilityModal({ doctor, onClose, onSaveSuccess }) {
         </button>
 
         <div className="modal-header">
-          <h3>Set Weekly Availability</h3>
-          <p className="modal-subtitle">Define the start and end hours for your consultation slots.</p>
+          <h3>Set Slot Availability</h3>
+          <p className="modal-subtitle">Configure available consultation slots for specific dates.</p>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-          <div className="availability-list">
-            {DAYS.map((day) => {
-              const settings = availability[day] || { active: false, start: "10:00 AM", end: "01:00 PM" };
-              return (
-                <div key={day} className={`day-row ${settings.active ? "active" : "inactive"}`}>
-                  <div className="day-label-group">
-                    <input
-                      type="checkbox"
-                      id={`check-${day}`}
-                      className="day-checkbox"
-                      checked={settings.active}
-                      onChange={() => handleToggleActive(day)}
-                    />
-                    <label htmlFor={`check-${day}`} className="day-name">
-                      {day}
-                    </label>
-                  </div>
-
-                  {settings.active ? (
-                    <div className="time-slot-inputs">
-                      <div className="time-select-wrapper">
-                        <span>From</span>
-                        <select
-                          className="time-dropdown"
-                          value={settings.start}
-                          onChange={(e) => handleTimeChange(day, "start", e.target.value)}
-                        >
-                          {TIME_OPTIONS.map(time => (
-                            <option key={time} value={time}>{time}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="time-select-wrapper">
-                        <span>To</span>
-                        <select
-                          className="time-dropdown"
-                          value={settings.end}
-                          onChange={(e) => handleTimeChange(day, "end", e.target.value)}
-                        >
-                          {TIME_OPTIONS.map(time => (
-                            <option key={time} value={time}>{time}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: 'right' }}>
-                      <span className="status-label">Not Attending</span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+        {loading ? (
+          <div className="loader-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, padding: '40px' }}>
+            <span style={{ color: '#cbd5e1' }}>Loading availability data...</span>
           </div>
+        ) : (
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+            <div className="availability-date-picker">
+              <label htmlFor="modal-date-picker">Select Date</label>
+              <input
+                type="date"
+                id="modal-date-picker"
+                value={selectedDate}
+                min={getTodayString()}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="modal-date-input"
+              />
+            </div>
 
-          <div className="modal-actions">
-            <button type="button" className="btn-cancel" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="submit" className="btn-save-avail" disabled={saving}>
-              <RiCalendarCheckLine /> {saving ? "Saving timings..." : "Save Availability"}
-            </button>
-          </div>
-        </form>
+            <div className="availability-slots-selection">
+              <label className="section-label">Select Available Slots</label>
+              <div className="slots-grid-container">
+                {TIME_OPTIONS.map((slot) => {
+                  const isActive = selectedSlots.includes(slot);
+                  return (
+                    <button
+                      key={slot}
+                      type="button"
+                      className={`slot-pill ${isActive ? "active" : ""}`}
+                      onClick={() => handleToggleSlot(slot)}
+                    >
+                      {slot}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="modal-actions" style={{ marginTop: '20px' }}>
+              <button type="button" className="btn-cancel" onClick={onClose} disabled={saving}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-unavailable"
+                onClick={handleMarkUnavailable}
+                disabled={saving || !selectedSlots.length}
+                style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '12px', borderRadius: '10px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <RiDeleteBin7Line /> Mark Unavailable
+              </button>
+              <button type="submit" className="btn-save-avail" disabled={saving}>
+                <RiCalendarCheckLine /> {saving ? "Saving..." : "Save Slots"}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );

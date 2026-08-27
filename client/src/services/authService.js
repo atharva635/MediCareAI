@@ -23,8 +23,9 @@ export const getConsultants = async () => {
   return await api.get("/auth/consultants");
 };
 
-export const getDoctors = async () => {
-  return await api.get("/auth/doctors");
+export const getDoctors = async (date = "") => {
+  const url = date ? `/auth/doctors?date=${date}` : "/auth/doctors";
+  return await api.get(url);
 };
 
 export const logoutUser = async () => {
