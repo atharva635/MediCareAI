@@ -1,23 +1,29 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
-const resend = new Resend(process.env.RESEND_API_KEY || "re_12345678901234567890123456789012");
+// Setup NodeMailer SMTP Transporter
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || "smtp.gmail.com",
+  port: parseInt(process.env.SMTP_PORT || "587"),
+  secure: false, // true for 465, false for other ports
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
 
-export const sendEmailNotification = async ({ to, subject, text }) => {
+export const sendEmailNotification = async ({ to, subject, text, html }) => {
   try {
-    const { data, error } = await resend.emails.send({
-      from: "MediCare AI <onboarding@resend.dev>",
-      to: [to],
+    const info = await transporter.sendMail({
+      from: `"MediCare AI" <${process.env.SMTP_USER}>`,
+      to,
       subject,
       text,
+      html,
     });
-
-    if (error) {
-      console.error("❌ Resend error:", error);
-      return;
-    }
-
-    console.log("📨 Email sent successfully:", data.id);
+    
+    console.log("📨 Email sent successfully via SMTP:", info.messageId);
+    return info;
   } catch (err) {
-    console.error("❌ Email failed:", err.message);
+    console.error("❌ Email failed via SMTP:", err.message);
   }
 };

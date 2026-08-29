@@ -16,4 +16,19 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Intercept 401 session expiration errors to kick-out client
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      const message = error.response.data?.message;
+      if (message && message.includes("device")) {
+        localStorage.removeItem("token");
+        window.location.href = "/login?expired=true";
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;

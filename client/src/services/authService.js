@@ -33,3 +33,23 @@ export const logoutUser = async () => {
 export const updateDoctorProfile = async (data) => {
   return await api.put("/auth/profile", data);
 };
+
+export const verifyOtp = async (email, otp, purpose) => {
+  return await api.post("/auth/verify-otp", { email, otp, purpose });
+};
+
+export const resendOtp = async (email, purpose) => {
+  return await api.post("/auth/resend-otp", { email, purpose });
+};
+
+export const forgotPassword = async (email) => {
+  return await api.post("/auth/forgot-password", { email });
+};
+
+export const resetPassword = async (email, otp, newPassword) => {
+  return await api.post("/auth/reset-password", { email, otp, newPassword });
+};
+
+export const loginWithGoogle = async (credential) => {
+  return await api.post("/auth/google", { credential });
+};

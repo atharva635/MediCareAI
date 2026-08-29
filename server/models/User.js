@@ -51,6 +51,19 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  mobile: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
+  tokenVersion: {
+    type: Number,
+    default: 0,
+  },
   availability: {
     type: Map,
     of: [String],
