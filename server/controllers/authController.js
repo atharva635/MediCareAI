@@ -174,10 +174,18 @@ export const login = async (req, res) => {
       });
     }
 
-    // Find User
-    const user = await User.findOne({
-      email: email.toLowerCase(),
-    });
+    // Build role-specific query
+    const query = { email: email.toLowerCase() };
+    if (role) {
+      if (role === "patient") {
+        query.role = "patient";
+      } else if (role === "professional") {
+        query.role = { $in: ["doctor", "consultant"] };
+      }
+    }
+
+    // Find User matching email and portal role
+    const user = await User.findOne(query);
 
     if (!user) {
       return res.status(401).json({
@@ -193,22 +201,6 @@ export const login = async (req, res) => {
         success: false,
         message: "Invalid Email or Password",
       });
-    }
-
-    // Verify role matches requested portal
-    if (role) {
-      if (role === "patient" && user.role !== "patient") {
-        return res.status(403).json({
-          success: false,
-          message: "This account is registered as a Clinical Professional. Please use the Professional portal!",
-        });
-      }
-      if (role === "professional" && !["doctor", "consultant"].includes(user.role)) {
-        return res.status(403).json({
-          success: false,
-          message: "This account is registered as a Patient. Please use the Patient portal!",
-        });
-      }
     }
 
     // Block unverified accounts
@@ -648,25 +640,19 @@ export const googleLogin = async (req, res) => {
       return res.status(400).json({ success: false, message: "Google account does not contain a valid email." });
     }
 
-    let user = await User.findOne({ email });
+    // Build role-specific query for Google Login
+    const query = { email };
+    if (role) {
+      if (role === "patient") {
+        query.role = "patient";
+      } else if (role === "professional") {
+        query.role = { $in: ["doctor", "consultant"] };
+      }
+    }
+
+    let user = await User.findOne(query);
 
     if (user) {
-      // Enforce role check if role parameter is provided
-      if (role) {
-        if (role === "patient" && user.role !== "patient") {
-          return res.status(403).json({
-            success: false,
-            message: "This Google account is registered as a Clinical Professional. Please use the Professional portal!",
-          });
-        }
-        if (role === "professional" && !["doctor", "consultant"].includes(user.role)) {
-          return res.status(403).json({
-            success: false,
-            message: "This Google account is registered as a Patient. Please use the Patient portal!",
-          });
-        }
-      }
-
       // User exists - merge account and auto-verify
       if (!user.isVerified) {
         user.isVerified = true;
