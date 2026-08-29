@@ -1,11 +1,13 @@
-# 🩺 MediCare AI
+# 🩺 MediCare AI — Intelligent Digital Healthcare Platform
 
-[![React](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
+[![React](https://img.shields.io/badge/React-19.2-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Tailwind CSS v4](https://img.shields.io/badge/Tailwind_CSS-v4.0-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![Node.js](https://img.shields.io/badge/Node.js-Express-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
-[![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![Node.js](https://img.shields.io/badge/Node.js-Express_v5-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose_v9-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
 [![WebRTC](https://img.shields.io/badge/WebRTC-P2P_Video-333333?style=for-the-badge&logo=webrtc&logoColor=white)](https://webrtc.org/)
-[![Socket.io](https://img.shields.io/badge/Socket.io-Realtime-010101?style=for-the-badge&logo=socketdotio&logoColor=white)](https://socket.io/)
+[![Socket.io](https://img.shields.io/badge/Socket.io-Realtime_v4-010101?style=for-the-badge&logo=socketdotio&logoColor=white)](https://socket.io/)
+[![Groq SDK](https://img.shields.io/badge/Groq-AI_Intake-F3BA2F?style=for-the-badge&logo=openai&logoColor=black)](https://groq.com/)
+[![Razorpay](https://img.shields.io/badge/Razorpay-Payment_Gateway-02042B?style=for-the-badge&logo=razorpay&logoColor=blue)](https://razorpay.com/)
 
 **MediCare AI** is a state-of-the-art digital healthcare ecosystem that automates patient intake, implements intelligent AI-powered symptom triaging, schedules appointments, processes secure payments, and hosts immersive virtual consultation workspaces with real-time peer-to-peer WebRTC video calling and Socket.io messaging.
 
@@ -25,7 +27,7 @@ sequenceDiagram
     participant AI as Groq LLM (MediCare AI)
     participant Payment as Razorpay API
 
-    Patient->>Server: Register & Submit Symptoms (Intake)
+    Patient->>Server: Register & Submit Symptoms (Intriage)
     Server->>AI: Evaluate Symptom Details
     AI-->>Server: Risk Classification & Initial Advice
     Server-->>Patient: Display Triage Summary (Low/Medium/High/Critical)
@@ -56,20 +58,20 @@ sequenceDiagram
 
 ---
 
-## ✨ Features
+## ✨ Features & Core Modules
 
 ### 👤 Patient Workspace
-*   **AI Symptoms Triage:** Perform preliminary symptom analysis. Patients receive automated advice and risk-level categorization (Low, Medium, High, Critical) before seeing a physician.
-*   **Conversational AI Intake Agent:** When booking an appointment, patients complete a sequential, interactive chatbot interview gathering symptoms, duration, medical history, and medications.
-*   **Physician Directory:** Browse verified lists of doctors filtered by specializations, consultation fees, experience, ratings, and active availability.
-*   **Interactive Booking:** Select date/time slots with automatic conflict prevention (blocks overlapping schedules).
-*   **Secure Payment Integration:** Integrated checkouts utilizing the **Razorpay API** for processing session fees.
+*   **AI Symptoms Triage:** Perform preliminary symptom analysis. Patients receive automated advice and risk-level categorization (**Low**, **Medium**, **High**, **Critical**) based on input severity metrics before scheduling an appointment.
+*   **Conversational AI Intake Agent:** When booking a consultation slot, patients go through an interactive chatbot interview that captures symptoms, duration, medical history highlights, daily medications, and allergies.
+*   **Physician Directory:** Browse verified lists of doctors filtered by specializations, consultation fees, experience, ratings, and current active availability.
+*   **Interactive Booking:** Select date/time slots with automatic conflict prevention (prevents overlapping schedules).
+*   **Secure Payment Integration:** Integrated checkout using the **Razorpay API** to process session/platform fees with cryptographically verified payment signatures.
 *   **Virtual Ward & Chat:** Access virtual call chambers for high-fidelity audio/video calls and chat histories.
 
 ### 🥼 Doctor Portal
 *   **AI Intake Diagnostic Report:** Before confirming appointments, doctors can review a parsed clinical profile showing severity levels (Mild, Moderate, Severe), risk categories (Low, Medium, High, Critical), chief complaints, medications list, and medical history highlights.
 *   **Patient Chat Logs Accordion:** View exact pre-consultation transcripts between patients and the AI assistant to track symptoms context.
-*   **Patient Intake Dashboard:** View complete list of triaged patient files, diagnostic logs, and historical consultations.
+*   **Patient Intake Dashboard:** View a complete list of triaged patient files, diagnostic logs, and historical consultations.
 *   **Appointment Management:** Accept, decline, or complete upcoming appointments with inline reason logs.
 *   **Prescription Console:** Record consultation outcomes, write clinical notes, input prescriptions, specify follow-up instructions, or transfer patients to other specialists.
 *   **P2P Telemedicine:** Directly initiate secure WebRTC video calls with patients alongside inline chat messaging.
@@ -78,12 +80,18 @@ sequenceDiagram
 *   **Intake Filtration:** Review newly registered triaged cases in the system.
 *   **Referral Gateway:** Input guidance notes, assign specialists, and transition patients from triage stages into scheduled appointments.
 
+### 🔐 Authentication & Security
+*   **OTP Verification:** Registering users receive dynamic OTPs (via Resend or SMTP fallbacks) to verify their email addresses.
+*   **JWT Token Signatures:** Secure REST APIs use Bearer tokens containing user roles and ID.
+*   **Google OAuth:** Implemented Google login integration for fast, passwordless patient boarding.
+*   **Role-Based Security Guards:** Express middleware controls page access (Patient vs. Doctor vs. Consultant).
+
 ---
 
 ## 🛠️ Tech Stack
 
 ### Frontend (Client)
-*   **Library:** React 19 (ES6 modules)
+*   **Library:** React 19 (ESNext modules)
 *   **Build Tool:** Vite
 *   **State Management:** Redux Toolkit (`@reduxjs/toolkit` & `react-redux`)
 *   **Navigation:** React Router Dom (v7)
@@ -106,28 +114,44 @@ sequenceDiagram
 
 ```text
 MediCareAI/
-├── client/                     # Frontend Application
-│   ├── public/                 # Static Assets
+├── client/                     # Frontend SPA Application
+│   ├── public/                 # Static Assets (Logos, Icons)
 │   ├── src/
-│   │   ├── components/         # Shared Components (Sidebar, Navbar, Loader, BookingModal)
+│   │   ├── components/         # Shared Components (Sidebar, Navbar, Loader, BookingModal, AIChatbot)
+│   │   │   ├── AIChatbot.jsx           # Floating AI symptoms helper chat widget
+│   │   │   ├── BookingModal.jsx        # Booking scheduler & interactive clinical intake conversation
+│   │   │   ├── PatientDetailModal.jsx  # Detailed patient history & logs for doctor/consultant review
+│   │   │   └── ...
 │   │   ├── hooks/              # Custom React Hooks
-│   │   ├── layouts/            # Page layouts
-│   │   ├── pages/              # Module Workspaces (Dashboard, Consultation, Triage, DoctorAppointments)
-│   │   ├── redux/              # Redux Slices (Auth, Active State)
-│   │   ├── routes/             # App Router with Role Protected Routes
+│   │   ├── layouts/            # Page layout wrappers
+│   │   ├── pages/              # Module Workspaces
+│   │   │   ├── Assessment/     # Doctor patient intake assessment registers
+│   │   │   ├── Consultation/   # WebRTC telemedicine room + Chat persistence
+│   │   │   ├── Dashboard/      # Dashboards for Patient, Doctor, and Consultant
+│   │   │   ├── DoctorList/     # Doctor directory for patient booking
+│   │   │   ├── Triage/         # Symptom triage questionnaire page
+│   │   │   └── ...
+│   │   ├── redux/              # Redux Slices (Auth and system states)
+│   │   ├── routes/             # App Router with Role-Protected Routes
 │   │   ├── services/           # Axios Base Instances & API Handlers
 │   │   └── utils/              # Helper functions
 │   ├── package.json
 │   └── vite.config.js
 │
 ├── server/                     # Backend API & WebSocket Server
-│   ├── config/                 # MongoDB database adapter
-│   ├── controllers/            # Controller Handlers (Auth, Payments, AI, Appointments)
+│   ├── config/                 # MongoDB database adapter & configs
+│   ├── controllers/            # Controller Handlers (Auth, Payments, AI, Appointments, Patients)
 │   ├── middleware/             # Route guards (JWT verification, Role validators)
-│   ├── models/                 # Mongoose Database Schemas (User, Patient, Appointment)
+│   ├── models/                 # Mongoose Database Schemas
+│   │   ├── User.js             # General credentials, roles, and doctor details
+│   │   ├── Patient.js          # Symptoms database logs & triage cases
+│   │   ├── Appointment.js      # Appointments logs & AI intake report structures
+│   │   ├── OTP.js              # Verification token records
+│   │   ├── Message.js          # Telehealth room chat logs
+│   │   └── consultation.js     # Consultation session metadata
 │   ├── routes/                 # Express REST Endpoints
-│   ├── services/               # Resend, Nodemailer, and Groq AI parsing scripts
-│   ├── validations/            # Request payload sanity check schemas
+│   ├── services/               # Resend, Nodemailer SMTP, and Groq AI services
+│   ├── validations/            # Request payload validation schemas
 │   ├── app.js                  # Express middleware declarations
 │   ├── server.js               # Entry point (HTTP Server, Socket.io signaling configuration)
 │   └── package.json
@@ -156,6 +180,9 @@ SMTP_PORT=587
 SMTP_USER=your_email_address@gmail.com
 SMTP_PASS=your_email_app_specific_password
 
+# Resend API Key (Alternative Email Service)
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
 # Razorpay Configuration
 RAZORPAY_KEY_ID=rzp_test_xxxxxx
 RAZORPAY_KEY_SECRET=xxxxxxxxxxxxxxxxxxxxx
@@ -167,6 +194,10 @@ GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ---
 
 ## 🚀 Installation & Local Development
+
+### Prerequisites
+*   [Node.js](https://nodejs.org/en) (v18 or higher recommended)
+*   [MongoDB Compass](https://www.mongodb.com/products/tools/compass) or a MongoDB Atlas Cloud Database
 
 ### 1️⃣ Clone the Repository
 ```bash
@@ -182,7 +213,7 @@ cd server
 # Install Node dependencies
 npm install
 
-# Start local server in development mode (with hot reloading via nodemon)
+# Start local server in development mode (hot reloading via nodemon)
 npm run dev
 ```
 *The server will initialize at `http://localhost:5000`.*
@@ -211,8 +242,13 @@ All requests are pre-configured to hit: `https://medicareai-backend-lp1l.onrende
 | **Auth** | `/api/auth/register` | `POST` | User registration (patient, doctor, consultant) | None |
 | **Auth** | `/api/auth/login` | `POST` | Login user & sign JWT | None |
 | **Auth** | `/api/auth/me` | `GET` | Retrieve logged-in user profile details | Bearer JWT |
-| **Patients**| `/api/patient` | `POST` | Submit triage details & intake symptom list | Patient |
-| **Patients**| `/api/patient/all` | `GET` | Fetch all records for the viewing workspace | Role Restricted |
+| **Auth** | `/api/auth/verify-otp` | `POST` | Verifies dynamic email signup OTP | None |
+| **Auth** | `/api/auth/resend-otp` | `POST` | Resends OTP verification code | None |
+| **Auth** | `/api/auth/forgot-password`| `POST` | Generates recovery OTP for account | None |
+| **Auth** | `/api/auth/reset-password` | `POST` | Resets user password using valid token | None |
+| **Auth** | `/api/auth/google` | `POST` | Integrates/logs user in using Google token | None |
+| **Patients**| `/api/patient` | `POST` | Submit triage details & intake symptom list | Patient / Doctor |
+| **Patients**| `/api/patient/all` | `GET` | Fetch all triage records for the workspace | Role Restricted |
 | **Appointments**| `/api/appointments` | `POST` | Book appointment slot. Accepts `aiChatHistory` in request body to trigger Groq parsing. | Patient |
 | **Appointments**| `/api/appointments/doctor`| `GET` | View appointments assigned to currently authenticated doctor | Doctor |
 | **Payments**| `/api/payments/order` | `POST` | Generate Razorpay order ID | Patient |
@@ -223,30 +259,74 @@ All requests are pre-configured to hit: `https://medicareai-backend-lp1l.onrende
 
 ## 🗃️ Database Schemas (MongoDB models)
 
-*   **`User`**: Manages authentication details, credentials, and roles (`patient`, `doctor`, `consultant`). Stores specialized metadata for doctors (specialization, experience, consulting fees, ratings, availability timetables).
-*   **`Patient`**: Handles symptom logs, triage outcomes, severity categories (`Low`, `Medium`, `High`, `Critical`), payment statuses, consultant referral notes, and doctor diagnosis details.
-*   **`Appointment`**: Connects patient and doctor models. Maintains date/time slots, amount, payment tracking, appointment statuses, and physician decisions (Pending/Accepted/Rejected). Stores the structured `aiIntake` sub-document:
-    ```javascript
-    aiIntake: {
-      chiefComplaint: String,
-      duration: String,
-      symptoms: [String],
-      history: String,
-      medications: String,
-      severity: String,
-      riskLevel: String,
-      summary: String,
-      chatHistory: [
-        { sender: String, text: String, timestamp: Date }
-      ]
-    }
-    ```
-*   **`Message`**: Persists conversation texts sent during virtual consultation sessions alongside roomId tracking for active WebRTC rooms.
-*   **`Consultation`**: Represents active/completed direct communication tracks between patients and doctors.
+### 👤 `User`
+Manages general authentication, authorization levels, and roles. Stashes special parameters for physicians if user role is `"doctor"`.
+*   `fullName` (String, required)
+*   `email` (String, required, unique)
+*   `password` (String, required)
+*   `role` (`patient`, `doctor`, `consultant`)
+*   `isVerified` (Boolean, defaults to false)
+*   `specialization` (String, for Doctors)
+*   `experience` (Number, for Doctors)
+*   `consultationFee` (Number, for Doctors)
+*   `rating` (Number, defaults to 4.8)
+*   `isOnline` (Boolean)
+*   `location`: Geolocation parameters (`2dsphere` index coordinates for location searches)
+*   `availability`: Map representing days of the week and active time slots (`AvailabilityModal`)
+
+### 🏥 `Patient`
+Handles symptom triage submissions, severity levels, payment states, and referral transfers.
+*   `name` (String, required)
+*   `age` (Number, required)
+*   `gender` (Male, Female, Other)
+*   `symptoms` (Array of Strings)
+*   `riskLevel` (Low, Medium, High, Critical)
+*   `consultationStatus` (Triage, Paid, In Progress, Completed)
+*   `paymentStatus` (Unpaid, Paid)
+*   `assignedDoctor` (ObjectId reference to User)
+*   `referredTo` (ObjectId reference to User)
+*   `referralReason` (String)
+*   `doctorNotes` / `consultantNotes` (String)
+
+### 📅 `Appointment`
+Connects Patient and Doctor models. Hosts date/time scheduling constraints, Razorpay orders, and the parsed AI clinical intake profile.
+*   `patient` (ObjectId reference to User)
+*   `doctor` (ObjectId reference to User)
+*   `appointmentDate` (String)
+*   `appointmentTime` (String)
+*   `paymentStatus` (pending, paid, failed)
+*   `appointmentStatus` (pending, confirmed, cancelled, completed, expired)
+*   `aiIntake`: Nested object summarizing the intake chatbot's conversation:
+    *   `chiefComplaint` (String)
+    *   `duration` (String)
+    *   `symptoms` (Array of Strings)
+    *   `history` (String)
+    *   `medications` (String)
+    *   `severity` (Mild, Moderate, Severe)
+    *   `riskLevel` (Low, Medium, High, Critical)
+    *   `summary` (Concise clinical paragraph)
+    *   `chatHistory`: Array of message objects (sender, text, timestamp) representing the complete transcript.
 
 ---
 
-## 🔮 Roadmap & Future Enhancements
+## 📡 WebRTC Telehealth & Signaling Details
+
+The virtual consultation room uses **WebRTC** (Web Real-Time Communication) to link patients and doctors directly.
+
+1.  **Room Entry:** Both patient and doctor join a socket room matching their `appointmentId`.
+2.  **Signaling Relay:** When the doctor opens the room:
+    *   Doctor fires `join-room`.
+    *   Patient fires `join-room`.
+    *   The browser client generates an SDP (Session Description Protocol) offer.
+    *   The client sends `webrtc-offer` to the Node.js server.
+    *   The Node.js server relays the offer to the corresponding peer in the room.
+3.  **SDP Handshake:** The receiving peer generates a `webrtc-answer` and returns it via the WebSocket connections.
+4.  **ICE Candidates:** Both peers gather local network ICE Candidates and broadcast them via the `webrtc-candidate` event to establish the peer-to-peer connection.
+5.  **Text Chat:** Simultaneous chat messages sent in the active consultation page are saved via `send-message` directly into the database (`Message.js`) and broadcast using `receive-message` to keep conversations in sync.
+
+---
+
+## 🔮 Future Enhancements & Roadmap
 
 As the platform is in active development, the following modules are planned:
 *   [x] **AI Pre-Consultation Intake Agent:** Implemented interactive pre-consultation chatbot interviewing patients and structuring reports.
