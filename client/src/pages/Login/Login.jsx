@@ -110,7 +110,7 @@ export default function Login() {
   const handleGoogleCredentialResponse = async (response) => {
     try {
       setLoading(true);
-      const res = await loginWithGoogle(response.credential);
+      const res = await loginWithGoogle(response.credential, activeTab);
       const userRole = res.data.user.role;
 
       // Verify portal match for Google Login
@@ -156,7 +156,7 @@ export default function Login() {
 
     try {
       setLoading(true);
-      const res = await loginWithGoogle(mockCredential);
+      const res = await loginWithGoogle(mockCredential, activeTab);
       const userRole = res.data.user.role;
 
       // Verify portal match
@@ -198,7 +198,7 @@ export default function Login() {
 
     try {
       setLoading(true);
-      const res = await loginUser(formData);
+      const res = await loginUser({ ...formData, role: activeTab });
       const userRole = res.data.user.role;
 
       // Verify portal match

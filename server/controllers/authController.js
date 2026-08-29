@@ -164,7 +164,7 @@ export const register = async (req, res) => {
 // ================= LOGIN =================
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
 
     // Required Fields
     if (!email || !password) {
@@ -193,6 +193,22 @@ export const login = async (req, res) => {
         success: false,
         message: "Invalid Email or Password",
       });
+    }
+
+    // Verify role matches requested portal
+    if (role) {
+      if (role === "patient" && user.role !== "patient") {
+        return res.status(403).json({
+          success: false,
+          message: "This account is registered as a Clinical Professional. Please use the Professional portal!",
+        });
+      }
+      if (role === "professional" && !["doctor", "consultant"].includes(user.role)) {
+        return res.status(403).json({
+          success: false,
+          message: "This account is registered as a Patient. Please use the Patient portal!",
+        });
+      }
     }
 
     // Block unverified accounts
@@ -612,7 +628,7 @@ export const resetPassword = async (req, res) => {
 // ================= GOOGLE LOGIN =================
 export const googleLogin = async (req, res) => {
   try {
-    const { credential } = req.body;
+    const { credential, role } = req.body;
 
     if (!credential) {
       return res.status(400).json({ success: false, message: "Google credential token is required." });
@@ -635,6 +651,22 @@ export const googleLogin = async (req, res) => {
     let user = await User.findOne({ email });
 
     if (user) {
+      // Enforce role check if role parameter is provided
+      if (role) {
+        if (role === "patient" && user.role !== "patient") {
+          return res.status(403).json({
+            success: false,
+            message: "This Google account is registered as a Clinical Professional. Please use the Professional portal!",
+          });
+        }
+        if (role === "professional" && !["doctor", "consultant"].includes(user.role)) {
+          return res.status(403).json({
+            success: false,
+            message: "This Google account is registered as a Patient. Please use the Patient portal!",
+          });
+        }
+      }
+
       // User exists - merge account and auto-verify
       if (!user.isVerified) {
         user.isVerified = true;
@@ -642,17 +674,10 @@ export const googleLogin = async (req, res) => {
       user.tokenVersion = (user.tokenVersion || 0) + 1;
       await user.save();
     } else {
-      // User does not exist - register a new patient automatically
-      const salt = await bcrypt.genSalt(10);
-      const randomPassword = await bcrypt.hash(Math.random().toString(36).substring(2, 15), salt);
-
-      user = await User.create({
-        fullName,
-        email,
-        password: randomPassword,
-        role: "patient",
-        isVerified: true,
-        tokenVersion: 1,
+      // User does not exist - Do NOT register automatically. Show "Account not found" warning.
+      return res.status(404).json({
+        success: false,
+        message: "No account found with this Google email. Please register first.",
       });
     }
 

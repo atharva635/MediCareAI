@@ -50,6 +50,6 @@ export const resetPassword = async (email, otp, newPassword) => {
   return await api.post("/auth/reset-password", { email, otp, newPassword });
 };
 
-export const loginWithGoogle = async (credential) => {
-  return await api.post("/auth/google", { credential });
+export const loginWithGoogle = async (credential, role) => {
+  return await api.post("/auth/google", { credential, role });
 };
