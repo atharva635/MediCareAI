@@ -111,6 +111,18 @@ export default function Login() {
     try {
       setLoading(true);
       const res = await loginWithGoogle(response.credential);
+      const userRole = res.data.user.role;
+
+      // Verify portal match for Google Login
+      if (activeTab === "patient" && userRole !== "patient") {
+        toast.error("This Google account is registered as a Clinical Professional. Please use the Professional portal!");
+        return;
+      }
+      if (activeTab === "professional" && !["doctor", "consultant"].includes(userRole)) {
+        toast.error("This Google account is registered as a Patient. Please use the Patient portal!");
+        return;
+      }
+
       toast.success(res.data.message || "Google Login Successful! ✅");
       
       dispatch(
@@ -120,7 +132,7 @@ export default function Login() {
         })
       );
 
-      navigate(res.data.user.role === "patient" ? "/patient/dashboard" : `/${res.data.user.role}/dashboard`);
+      navigate(userRole === "patient" ? "/patient/dashboard" : `/${userRole}/dashboard`);
     } catch (err) {
       toast.error(err.response?.data?.message || "Google Sign-in failed");
     } finally {
@@ -145,6 +157,18 @@ export default function Login() {
     try {
       setLoading(true);
       const res = await loginWithGoogle(mockCredential);
+      const userRole = res.data.user.role;
+
+      // Verify portal match
+      if (activeTab === "patient" && userRole !== "patient") {
+        toast.error("This account is registered as a Clinical Professional. Please use the Professional portal!");
+        return;
+      }
+      if (activeTab === "professional" && !["doctor", "consultant"].includes(userRole)) {
+        toast.error("This account is registered as a Patient. Please use the Patient portal!");
+        return;
+      }
+
       toast.success("Simulated Google Login Successful! ✅");
 
       dispatch(
@@ -154,7 +178,7 @@ export default function Login() {
         })
       );
 
-      navigate(res.data.user.role === "patient" ? "/patient/dashboard" : `/${res.data.user.role}/dashboard`);
+      navigate(userRole === "patient" ? "/patient/dashboard" : `/${userRole}/dashboard`);
     } catch (err) {
       toast.error(err.response?.data?.message || "Simulated Google Sign-in failed");
     } finally {
