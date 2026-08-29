@@ -100,10 +100,8 @@ export default function Register() {
     try {
       setLoading(true);
       const res = await registerUser(formData);
-      toast.success(res.data.message || "Security code sent! Please verify your email.");
-      setRegisteredEmail(formData.email);
-      setIsVerifying(true);
-      setCooldown(60);
+      toast.success(res.data.message || "Registration successful! Please log in.");
+      navigate("/login");
     } catch (err) {
       console.error("Register Error:", err);
       toast.error(err.response?.data?.message || err.message);

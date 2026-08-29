@@ -103,7 +103,7 @@ export const register = async (req, res) => {
       });
     }
 
-    // Create User (unverified)
+    // Create User (verified by default)
     const user = await User.create({
       fullName: fullName.trim(),
       email: email.toLowerCase(),
@@ -124,32 +124,13 @@ export const register = async (req, res) => {
       about: role === "doctor" ? (about || "") : "",
       isOnline: false,
       mobile,
-      isVerified: false,
+      isVerified: true,
       tokenVersion: 0,
-    });
-
-    // Generate Verification OTP code
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const hashedOtp = await bcrypt.hash(otp, salt);
-
-    await OTP.create({
-      email: email.toLowerCase(),
-      otp: hashedOtp,
-      purpose: "register",
-      expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 mins expiry
-    });
-
-    // Send verify email
-    await sendEmailNotification({
-      to: email.toLowerCase(),
-      subject: "Verify Your MediCare AI Account",
-      text: `Welcome to MediCare AI. Your verification code is: ${otp}`,
-      html: `<h3>Welcome to MediCare AI</h3><p>Use the OTP below to verify your email address:</p><h2 style="color:#2dd4bf; letter-spacing:2px;">${otp}</h2><p>This security code is valid for 10 minutes.</p>`,
     });
 
     return res.status(201).json({
       success: true,
-      message: "Registration successful! A verification code has been sent to your email.",
+      message: "Registration successful! You can now log in.",
       email: email.toLowerCase(),
     });
   } catch (error) {
@@ -203,35 +184,7 @@ export const login = async (req, res) => {
       });
     }
 
-    // Block unverified accounts
-    if (!user.isVerified) {
-      // Send a new registration OTP code automatically
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      const salt = await bcrypt.genSalt(10);
-      const hashedOtp = await bcrypt.hash(otp, salt);
-
-      await OTP.deleteOne({ email: user.email, purpose: "register" });
-      await OTP.create({
-        email: user.email,
-        otp: hashedOtp,
-        purpose: "register",
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-      });
-
-      await sendEmailNotification({
-        to: user.email,
-        subject: "Verify Your MediCare AI Account",
-        text: `Your verification code is: ${otp}`,
-        html: `<h3>Verify Your Email</h3><p>Please verify your email address to log in. Use the code below:</p><h2 style="color:#2dd4bf; letter-spacing:2px;">${otp}</h2><p>This code is valid for 10 minutes.</p>`,
-      });
-
-      return res.status(403).json({
-        success: false,
-        isUnverified: true,
-        message: "Your email address is not verified yet. A verification code has been sent to your email.",
-        email: user.email,
-      });
-    }
+    // Block unverified accounts block removed (all accounts verified by default)
 
     // Set online status if doctor
     if (user.role === "doctor") {
