@@ -126,6 +126,7 @@ export const register = async (req, res) => {
         about: user.about,
         rating: user.rating,
         isOnline: user.isOnline,
+        availability: user.availability,
       },
     });
   } catch (error) {
@@ -199,6 +200,7 @@ export const login = async (req, res) => {
         about: user.about,
         rating: user.rating,
         isOnline: user.isOnline,
+        availability: user.availability,
       },
     });
   } catch (error) {
@@ -237,6 +239,7 @@ export const getCurrentUser = async (req, res) => {
         about: user.about,
         rating: user.rating,
         isOnline: user.isOnline,
+        availability: user.availability,
       },
     });
   } catch (error) {
@@ -357,6 +360,7 @@ export const updateProfile = async (req, res) => {
         about: user.about,
         rating: user.rating,
         isOnline: user.isOnline,
+        availability: user.availability,
       },
     });
   } catch (error) {

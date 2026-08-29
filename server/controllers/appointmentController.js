@@ -8,6 +8,55 @@ import {
   minutesToTimeString,
   isSlotWithinAvailability
 } from "../utils/timeHelper.js";
+// Dynamic Auto-Expiration of past appointments (with a 30-min grace period)
+const autoExpireAppointments = async () => {
+  try {
+    const now = new Date();
+    
+    // Find all appointments that are pending or confirmed
+    const activeAppointments = await Appointment.find({
+      appointmentStatus: { $in: ["pending", "confirmed"] }
+    });
+
+    for (const appt of activeAppointments) {
+      if (!appt.appointmentDate || !appt.appointmentTime) continue;
+
+      // Extract time details
+      const [time, modifier] = appt.appointmentTime.split(" ");
+      let [hours, minutes] = time.split(":").map(Number);
+      if (modifier === "PM" && hours !== 12) {
+        hours += 12;
+      }
+      if (modifier === "AM" && hours === 12) {
+        hours = 0;
+      }
+
+      const dateParts = appt.appointmentDate.split("-");
+      if (dateParts.length !== 3) continue;
+      const year = parseInt(dateParts[0]);
+      const month = parseInt(dateParts[1]);
+      const day = parseInt(dateParts[2]);
+
+      // Construct a Date object representing the slot start time in India Standard Time (+05:30)
+      const dateString = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00+05:30`;
+      const appointmentStart = new Date(dateString);
+
+      if (isNaN(appointmentStart.getTime())) continue;
+
+      // Add 30 minutes grace period
+      const appointmentGraceExpiry = new Date(appointmentStart.getTime() + 30 * 60 * 1000);
+
+      // If the current time has passed the grace period, auto-expire it
+      if (now > appointmentGraceExpiry) {
+        appt.appointmentStatus = "expired";
+        await appt.save();
+        console.log(`[MedicareAI] Auto-expired appointment ID ${appt._id} (Scheduled: ${appt.appointmentDate} at ${appt.appointmentTime})`);
+      }
+    }
+  } catch (error) {
+    console.error("Error running autoExpireAppointments:", error);
+  }
+};
 
 
 // ================= APPOINTMENT CONTROLLERS =================
@@ -137,6 +186,7 @@ export const createAppointment = async (req, res) => {
 // 2. Get Patient Appointments
 export const getPatientAppointments = async (req, res) => {
   try {
+    await autoExpireAppointments();
     const appointments = await Appointment.find({ patient: req.user.id })
       .populate("doctor", "fullName email specialization consultationFee about rating")
       .sort({ createdAt: -1 });
@@ -157,6 +207,7 @@ export const getPatientAppointments = async (req, res) => {
 // 3. Get Doctor Appointments
 export const getDoctorAppointments = async (req, res) => {
   try {
+    await autoExpireAppointments();
     const appointments = await Appointment.find({ doctor: req.user.id })
       .populate("patient", "fullName email")
       .sort({ createdAt: -1 });
@@ -177,6 +228,7 @@ export const getDoctorAppointments = async (req, res) => {
 // 4. Get Appointment By ID
 export const getAppointmentById = async (req, res) => {
   try {
+    await autoExpireAppointments();
     const appointment = await Appointment.findById(req.params.id)
       .populate("patient", "fullName email")
       .populate("doctor", "fullName email specialization consultationFee about rating");

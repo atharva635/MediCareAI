@@ -7,15 +7,18 @@ import { toast } from "react-hot-toast";
 import { RiCalendarEventLine, RiTimeLine, RiMoneyRupeeCircleLine, RiDiscussLine, RiCheckboxCircleLine, RiCloseCircleLine } from "react-icons/ri";
 import "./DoctorAppointments.css";
 
-const getKolkataDateString = () => {
-  const d = new Date();
-  const formatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  });
-  return formatter.format(d); // Returns YYYY-MM-DD
+const parseAppointmentDateTime = (dateStr, timeStr) => {
+  if (!dateStr || !timeStr) return null;
+  const [time, modifier] = timeStr.split(" ");
+  let [hours, minutes] = time.split(":").map(Number);
+  if (modifier === "PM" && hours !== 12) {
+    hours += 12;
+  }
+  if (modifier === "AM" && hours === 12) {
+    hours = 0;
+  }
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return new Date(year, month - 1, day, hours, minutes, 0, 0);
 };
 
 export default function DoctorAppointments() {
@@ -25,9 +28,18 @@ export default function DoctorAppointments() {
   const [activeTab, setActiveTab] = useState("new"); // 'new', 'paid', 'upcoming', 'attention', 'history'
   const [expandedIntakeId, setExpandedIntakeId] = useState(null);
   const [expandedReportId, setExpandedReportId] = useState(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
     loadAppointments();
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 10000); // 10 seconds for real-time responsiveness
+
+    return () => clearInterval(timer);
   }, []);
 
   const loadAppointments = async () => {
@@ -90,28 +102,49 @@ export default function DoctorAppointments() {
     }
   };
 
-  // Filter Categories
-  const todayStr = getKolkataDateString();
+  const isAppointmentExpired = (appt) => {
+    if (appt.appointmentStatus === "completed" || appt.appointmentStatus === "cancelled") return false;
+    if (appt.appointmentStatus === "expired") return true;
 
-  const newRequests = appointments.filter(appt =>
-    appt.doctorDecision === "pending" && appt.appointmentStatus !== "cancelled"
-  );
+    // Check if slot has passed (start + 30 mins slot duration)
+    const start = parseAppointmentDateTime(appt.appointmentDate, appt.appointmentTime);
+    if (!start) return false;
+    const end = new Date(start.getTime() + 30 * 60 * 1000);
+    return currentTime > end;
+  };
 
-  const paidScheduled = appointments.filter(appt =>
-    appt.doctorDecision === "accepted" && appt.appointmentStatus === "confirmed" && appt.paymentStatus === "paid" && appt.appointmentDate === todayStr
-  );
+  const newRequests = appointments.filter(appt => {
+    if (appt.doctorDecision !== "pending" || appt.appointmentStatus === "cancelled") return false;
+    return !isAppointmentExpired(appt);
+  });
 
-  const upcomingAppointments = appointments.filter(appt =>
-    appt.doctorDecision === "accepted" && appt.appointmentStatus === "confirmed" && appt.paymentStatus === "paid" && appt.appointmentDate > todayStr
-  );
+  const paidScheduled = appointments.filter(appt => {
+    if (appt.doctorDecision !== "accepted" || appt.appointmentStatus !== "confirmed" || appt.paymentStatus !== "paid") return false;
+    const start = parseAppointmentDateTime(appt.appointmentDate, appt.appointmentTime);
+    if (!start) return false;
+    const isToday = start.toDateString() === currentTime.toDateString();
+    return isToday && !isAppointmentExpired(appt);
+  });
 
-  const attentionAppointments = appointments.filter(appt =>
-    appt.doctorDecision === "accepted" && appt.paymentStatus === "pending" && appt.appointmentStatus !== "cancelled"
-  );
+  const upcomingAppointments = appointments.filter(appt => {
+    if (appt.doctorDecision !== "accepted" || appt.appointmentStatus !== "confirmed" || appt.paymentStatus !== "paid") return false;
+    const start = parseAppointmentDateTime(appt.appointmentDate, appt.appointmentTime);
+    if (!start) return false;
+    const isToday = start.toDateString() === currentTime.toDateString();
+    return start > currentTime && !isToday;
+  });
 
-  const historyAppointments = appointments.filter(appt =>
-    appt.appointmentStatus === "completed" || appt.appointmentStatus === "cancelled" || appt.doctorDecision === "rejected"
-  );
+  const attentionAppointments = appointments.filter(appt => {
+    if (appt.doctorDecision !== "accepted" || appt.paymentStatus !== "pending" || appt.appointmentStatus === "cancelled") return false;
+    return !isAppointmentExpired(appt);
+  });
+
+  const historyAppointments = appointments.filter(appt => {
+    if (appt.appointmentStatus === "completed" || appt.appointmentStatus === "cancelled" || appt.doctorDecision === "rejected") {
+      return true;
+    }
+    return isAppointmentExpired(appt);
+  });
 
   let displayedAppointments = [];
   if (activeTab === "new") displayedAppointments = newRequests;
@@ -275,6 +308,13 @@ export default function DoctorAppointments() {
                   {activeTab === "history" && appt.appointmentStatus === "cancelled" && (
                     <div className="card-actions-row border-top" style={{ paddingTop: "10px", display: "flex", flexDirection: "column", alignItems: "flex-start", width: "100%" }}>
                       <span style={{ fontSize: "0.85rem", color: "#ef4444", fontWeight: "700", display: "flex", alignItems: "center", gap: "4px" }}><RiCloseCircleLine /> {appt.doctorDecision === "rejected" ? "Request Rejected" : "Session Cancelled"}</span>
+                    </div>
+                  )}
+
+                  {activeTab === "history" && (appt.appointmentStatus === "expired" || isAppointmentExpired(appt)) && (
+                    <div className="card-actions-row border-top" style={{ paddingTop: "10px", display: "flex", flexDirection: "column", alignItems: "flex-start", width: "100%" }}>
+                      <span style={{ fontSize: "0.85rem", color: "#f59e0b", fontWeight: "700", display: "flex", alignItems: "center", gap: "4px" }}><RiTimeLine /> Consultation Expired</span>
+                      <p style={{ margin: "4px 0 0 0", fontSize: "0.8rem", color: "#94a3b8" }}>This appointment was not attended within the scheduled time.</p>
                     </div>
                   )}
                 </div>

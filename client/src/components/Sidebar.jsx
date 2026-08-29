@@ -58,37 +58,15 @@ export default function Sidebar() {
         </NavLink>
 
         {user?.role === "doctor" && (
-          <>
-            <NavLink
-              to="/assessment"
-              className={({ isActive }) =>
-                `nav-item ${isActive ? "active" : ""}`
-              }
-            >
-              <RiHeartPulseLine className="nav-icon" />
-              <span>Assessment</span>
-            </NavLink>
-
-            <NavLink
-              to="/doctor/appointments"
-              className={({ isActive }) =>
-                `nav-item ${isActive ? "active" : ""}`
-              }
-            >
-              <RiCalendarEventLine className="nav-icon" />
-              <span>Appointments</span>
-            </NavLink>
-
-            <NavLink
-              to="/history"
-              className={({ isActive }) =>
-                `nav-item ${isActive ? "active" : ""}`
-              }
-            >
-              <RiHistoryLine className="nav-icon" />
-              <span>History</span>
-            </NavLink>
-          </>
+          <NavLink
+            to="/doctor/appointments"
+            className={({ isActive }) =>
+              `nav-item ${isActive ? "active" : ""}`
+            }
+          >
+            <RiCalendarEventLine className="nav-icon" />
+            <span>Appointments</span>
+          </NavLink>
         )}
 
         {user?.role === "patient" && (

@@ -16,6 +16,7 @@ export default function PatientAppointments() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("upcoming"); // 'upcoming' or 'past'
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [expandedReportId, setExpandedReportId] = useState(null);
 
   // Payment states
   const { user } = useSelector((state) => state.auth);
@@ -28,7 +29,7 @@ export default function PatientAppointments() {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 30000);
+    }, 10000); // 10 seconds for real-time responsiveness
 
     return () => clearInterval(timer);
   }, []);
@@ -179,43 +180,62 @@ export default function PatientAppointments() {
     });
   };
 
-  const isAppointmentPast = (appt) => {
-    if (!appt.appointmentDate || !appt.appointmentTime) return false;
-
-    const [time, modifier] = appt.appointmentTime.split(" ");
+  const parseAppointmentDateTime = (dateStr, timeStr) => {
+    if (!dateStr || !timeStr) return null;
+    const [time, modifier] = timeStr.split(" ");
     let [hours, minutes] = time.split(":").map(Number);
-
     if (modifier === "PM" && hours !== 12) {
       hours += 12;
     }
     if (modifier === "AM" && hours === 12) {
       hours = 0;
     }
+    const [year, month, day] = dateStr.split("-").map(Number);
+    return new Date(year, month - 1, day, hours, minutes, 0, 0);
+  };
 
-    const appointmentDateTime = new Date(`${appt.appointmentDate}T00:00:00`);
-    appointmentDateTime.setHours(hours, minutes, 0, 0);
+  const isReadyToJoin = (appt) => {
+    if (appt.appointmentStatus !== "confirmed" || appt.paymentStatus !== "paid") return false;
+    const start = parseAppointmentDateTime(appt.appointmentDate, appt.appointmentTime);
+    if (!start) return false;
+    const end = new Date(start.getTime() + 30 * 60 * 1000);
+    const leadTime = new Date(start.getTime() - 10 * 60 * 1000); // 10 mins early
+    return currentTime >= leadTime && currentTime <= end;
+  };
 
-    return appointmentDateTime <= currentTime;
+  const isAppointmentExpired = (appt) => {
+    if (appt.appointmentStatus === "completed" || appt.appointmentStatus === "cancelled") return false;
+    if (appt.appointmentStatus === "expired") return true;
+
+    // Check if slot has passed (start + 30 mins slot duration)
+    const start = parseAppointmentDateTime(appt.appointmentDate, appt.appointmentTime);
+    if (!start) return false;
+    const end = new Date(start.getTime() + 30 * 60 * 1000);
+    return currentTime > end;
   };
 
   // Filter appointments
-  const upcomingAppointments = appointments.filter((appt) =>
-    appt.appointmentStatus === "confirmed" &&
-    appt.paymentStatus === "paid" &&
-    appt.doctorDecision === "accepted"
-  );
+  const upcomingAppointments = appointments.filter((appt) => {
+    if (appt.appointmentStatus !== "confirmed" || appt.paymentStatus !== "paid" || appt.doctorDecision !== "accepted") {
+      return false;
+    }
+    return !isAppointmentExpired(appt);
+  });
 
-  const pendingAppointments = appointments.filter((appt) =>
-    appt.appointmentStatus === "pending" &&
-    (appt.doctorDecision === "pending" || appt.paymentStatus === "pending") &&
-    appt.doctorDecision !== "rejected"
-  );
+  const pendingAppointments = appointments.filter((appt) => {
+    if (appt.appointmentStatus === "cancelled" || appt.appointmentStatus === "completed" || appt.appointmentStatus === "expired" || appt.doctorDecision === "rejected") {
+      return false;
+    }
+    if (isAppointmentExpired(appt)) return false;
+    return appt.doctorDecision === "pending" || appt.paymentStatus === "pending" || appt.appointmentStatus === "pending";
+  });
 
-  const historyAppointments = appointments.filter((appt) =>
-    appt.appointmentStatus === "completed" ||
-    appt.appointmentStatus === "cancelled" ||
-    appt.doctorDecision === "rejected"
-  );
+  const historyAppointments = appointments.filter((appt) => {
+    if (appt.appointmentStatus === "completed" || appt.appointmentStatus === "cancelled" || appt.doctorDecision === "rejected") {
+      return true;
+    }
+    return isAppointmentExpired(appt);
+  });
 
   const displayedAppointments =
     activeTab === "upcoming" ? upcomingAppointments :
@@ -313,9 +333,19 @@ export default function PatientAppointments() {
                       <span className={`status-badge ${appt.paymentStatus}`}>
                         {appt.paymentStatus === "paid" ? "✓ Paid" : "⚠ Unpaid"}
                       </span>
-                      <span className={`status-badge ${appt.appointmentStatus}`}>
-                        {appt.appointmentStatus}
-                      </span>
+                      {isReadyToJoin(appt) ? (
+                        <span className="status-badge" style={{ background: "rgba(16, 185, 129, 0.15)", color: "#10b981", animation: "pulse 2s infinite ease-in-out", fontWeight: "700" }}>
+                          🟢 CONSULTATION NOW
+                        </span>
+                      ) : isAppointmentExpired(appt) ? (
+                        <span className="status-badge expired" style={{ background: "rgba(245, 158, 11, 0.15)", color: "#f59e0b" }}>
+                          expired
+                        </span>
+                      ) : (
+                        <span className={`status-badge ${appt.appointmentStatus}`}>
+                          {appt.appointmentStatus}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -325,7 +355,11 @@ export default function PatientAppointments() {
                       <button
                         onClick={() => handleJoin(appt)}
                         className="btn-join-consult"
-                        style={{ flex: 1 }}
+                        style={{
+                          flex: 1,
+                          background: isReadyToJoin(appt) ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : undefined,
+                          boxShadow: isReadyToJoin(appt) ? "0 4px 14px rgba(16, 185, 129, 0.4)" : undefined
+                        }}
                       >
                         <RiDiscussLine /> Join Consultation
                       </button>
@@ -451,6 +485,19 @@ export default function PatientAppointments() {
                           Cancelled by Patient
                         </span>
                       )}
+                    </div>
+                  )}
+
+                  {activeTab === "history" && (appt.appointmentStatus === "expired" || isAppointmentExpired(appt)) && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", width: "100%" }}>
+                      <div className="card-actions-row border-top" style={{ paddingTop: "10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: "0.85rem", color: "#f59e0b", fontWeight: "700", display: "flex", alignItems: "center", gap: "4px" }}>
+                          <RiTimeLine /> Consultation Expired
+                        </span>
+                      </div>
+                      <span style={{ fontSize: "0.8rem", color: "#94a3b8" }}>
+                        This appointment was not attended within the scheduled time.
+                      </span>
                     </div>
                   )}
                 </div>

@@ -47,6 +47,12 @@ export default function BookingModal({ doctor, onClose }) {
     "Are you currently taking any daily medicines or treatments?"
   ];
 
+  const handleBackdropClick = () => {
+    if (step !== "success" && !paymentLoading) {
+      onClose();
+    }
+  };
+
   // Auto-scroll chat area
   useEffect(() => {
     if (chatEndRef.current) {
@@ -194,8 +200,8 @@ export default function BookingModal({ doctor, onClose }) {
   const totalAmount = baseFee + platformFee;
 
   return (
-    <div className="booking-modal-overlay">
-      <div className="booking-modal-container glass-panel animate-zoom">
+    <div className="booking-modal-overlay" onClick={handleBackdropClick}>
+      <div className="booking-modal-container glass-panel animate-zoom" onClick={(e) => e.stopPropagation()}>
         
         {/* Modal Header */}
         <div className="booking-modal-header">
