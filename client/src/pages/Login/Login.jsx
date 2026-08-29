@@ -84,7 +84,7 @@ export default function Login() {
         try {
           window.google.accounts.id.initialize({
             // Demo/Developer client ID. Can be configured via env
-            client_id: "870633837943-78j1j1qj8j1j1j1j1j1j1j1j1j1j1j1j.apps.googleusercontent.com",
+            client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || "870633837943-78j1j1qj8j1j1j1j1j1j1j1j1j1j1j1j.apps.googleusercontent.com",
             callback: handleGoogleCredentialResponse,
           });
           window.google.accounts.id.renderButton(
