@@ -207,7 +207,7 @@ const socket = io(socketUrl);
 
       socket.emit("join-room", {
         roomId: id,
-        userId: user._id,
+        userId: user.id,
         userName: user.fullName,
       });
 
@@ -334,7 +334,7 @@ const socket = io(socketUrl);
     socketRef.current.emit("send-message", {
       roomId: id,
       text: messageText,
-      senderId: user._id,
+      senderId: user.id,
       senderName: user.fullName,
     });
 
@@ -527,7 +527,7 @@ const socket = io(socketUrl);
                       messages.map((msg, index) => (
                         <div 
                           key={msg._id || index} 
-                          className={`chat-bubble ${msg.sender === user._id ? "own-message" : "peer-message"}`}
+                          className={`chat-bubble ${msg.sender === user.id ? "own-message" : "peer-message"}`}
                         >
                           <div className="msg-meta">
                             <strong>{msg.senderName}</strong>
