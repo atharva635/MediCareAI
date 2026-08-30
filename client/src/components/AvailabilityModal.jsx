@@ -26,9 +26,10 @@ const parseTimeToMinutes = (timeStr) => {
 
 // Helper: Formats YYYY-MM-DD into a human-friendly label "Monday, 31 August 2026"
 const formatDateNicely = (dateStr) => {
-  if (!dateStr) return "";
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr || "";
   const [y, m, d] = dateStr.split("-").map(Number);
   const dateObj = new Date(y, m - 1, d);
+  if (isNaN(dateObj.getTime())) return dateStr;
   return dateObj.toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -96,8 +97,8 @@ export default function AvailabilityModal({ doctor, onClose, onSaveSuccess }) {
       return;
     }
 
-    if (selectedDate === kolkataDateStr && startMin <= currentMinutes) {
-      toast.error("Consultation slot start time cannot be in the past.");
+    if (selectedDate === kolkataDateStr && endMin <= currentMinutes) {
+      toast.error("Consultation slot end time cannot be in the past.");
       return;
     }
 

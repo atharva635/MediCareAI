@@ -12,9 +12,10 @@ import AIChatbot from "../../components/AIChatbot";
 
 // Helper: Formats YYYY-MM-DD into a human-friendly label "Monday, 31 August 2026"
 const formatDateNicely = (dateStr) => {
-  if (!dateStr) return "";
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr || "";
   const [y, m, d] = dateStr.split("-").map(Number);
   const dateObj = new Date(y, m - 1, d);
+  if (isNaN(dateObj.getTime())) return dateStr;
   return dateObj.toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -50,7 +51,7 @@ const getDoctorStatusInfo = (doctor) => {
 
   const slots = [];
   Object.entries(rawAvail).forEach(([dateKey, ranges]) => {
-    if (!ranges) return;
+    if (!ranges || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return;
     ranges.forEach(range => {
       const parts = range.split("-").map(p => p.trim());
       if (parts.length !== 2) return;

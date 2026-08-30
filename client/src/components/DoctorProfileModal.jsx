@@ -2,9 +2,10 @@ import { RiCloseLine, RiStarFill, RiMapPinLine, RiBriefcaseLine, RiMoneyRupeeCir
 import "./DoctorProfileModal.css";
 
 const formatDateNicely = (dateStr) => {
-  if (!dateStr) return "";
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr || "";
   const [y, m, d] = dateStr.split("-").map(Number);
   const dateObj = new Date(y, m - 1, d);
+  if (isNaN(dateObj.getTime())) return dateStr;
   return dateObj.toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
