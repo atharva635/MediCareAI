@@ -8,12 +8,30 @@ import {
   RiLockLine,
   RiPhoneLine,
   RiHeartPulseLine,
-  RiShieldCheckLine
+  RiShieldCheckLine,
+  RiSunLine,
+  RiMoonLine
 } from "react-icons/ri";
 import "./Register.css";
 
 export default function Register() {
   const navigate = useNavigate();
+
+  const [theme, setTheme] = useState(localStorage.getItem("theme") || "dark");
+
+  useEffect(() => {
+    if (theme === "light") {
+      document.documentElement.classList.add("light");
+    } else {
+      document.documentElement.classList.remove("light");
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === "light" ? "dark" : "light";
+    setTheme(nextTheme);
+    localStorage.setItem("theme", nextTheme);
+  };
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -137,6 +155,9 @@ export default function Register() {
 
   return (
     <div className="register-page-wrapper">
+      <button className="theme-toggle-floating" onClick={toggleTheme} title="Toggle Theme">
+        {theme === "light" ? <RiMoonLine /> : <RiSunLine />}
+      </button>
       <div className="blob-1"></div>
       <div className="blob-2"></div>
 

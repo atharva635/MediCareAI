@@ -12,7 +12,9 @@ import {
   RiEyeOffLine,
   RiArrowLeftLine,
   RiShieldKeyholeLine,
-  RiGoogleFill
+  RiGoogleFill,
+  RiSunLine,
+  RiMoonLine
 } from "react-icons/ri";
 import "./Login.css";
 
@@ -30,6 +32,22 @@ export default function Login() {
 
   // View States: 'login' | 'forgot' | 'reset'
   const [viewState, setViewState] = useState("login");
+
+  const [theme, setTheme] = useState(localStorage.getItem("theme") || "dark");
+
+  useEffect(() => {
+    if (theme === "light") {
+      document.documentElement.classList.add("light");
+    } else {
+      document.documentElement.classList.remove("light");
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === "light" ? "dark" : "light";
+    setTheme(nextTheme);
+    localStorage.setItem("theme", nextTheme);
+  };
 
   // Form Data States
   const [formData, setFormData] = useState({
@@ -279,6 +297,9 @@ export default function Login() {
 
   return (
     <div className="login-page-wrapper">
+      <button className="theme-toggle-floating" onClick={toggleTheme} title="Toggle Theme">
+        {theme === "light" ? <RiMoonLine /> : <RiSunLine />}
+      </button>
       <div className="blob-1"></div>
       <div className="blob-2"></div>
 

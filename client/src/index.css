@@ -194,7 +194,9 @@
 :root.light .history-layout,
 :root.light .register-layout,
 :root.light .login-layout,
-:root.light .landing-layout {
+:root.light .landing-layout,
+:root.light .login-page-wrapper,
+:root.light .register-page-wrapper {
   background-color: var(--bg-dark) !important;
 }
 
@@ -259,6 +261,49 @@
 :root.light .chat-text-input:focus {
   border-color: #0d9488 !important;
   background: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Floating Theme Toggle (for Login & Register pages) */
+.theme-toggle-floating {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 999;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 1.25rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.theme-toggle-floating:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #2dd4bf;
+  transform: scale(1.08) rotate(15deg);
+  box-shadow: 0 6px 16px rgba(45, 212, 191, 0.15);
+}
+
+:root.light .theme-toggle-floating {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: #0f172a;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+:root.light .theme-toggle-floating:hover {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #0d9488;
+  box-shadow: 0 6px 16px rgba(13, 148, 136, 0.15);
 }
 
 /* Global Modal Styles */
