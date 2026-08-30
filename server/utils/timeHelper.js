@@ -65,14 +65,25 @@ export const getKolkataTimeInfo = (date = new Date()) => {
   };
 };
 
-// Check if doctor is currently available based on availability map and current date/time in Asia/Kolkata timezone
+export const getKolkataDateString = (date = new Date()) => {
+  const options = {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  };
+  const formatter = new Intl.DateTimeFormat("en-CA", options);
+  return formatter.format(date);
+};
+
 export const checkDoctorAvailability = (availability, checkDate = new Date()) => {
   if (!availability) return false;
   
-  const { dayName, hours, minutes } = getKolkataTimeInfo(checkDate);
-  const currentMinutes = hours * 60 + minutes;
+  const dateStr = getKolkataDateString(checkDate);
+  const timeInfo = getKolkataTimeInfo(checkDate);
+  const currentMinutes = timeInfo.hours * 60 + timeInfo.minutes;
   
-  const ranges = availability instanceof Map ? availability.get(dayName) : availability[dayName];
+  const ranges = availability instanceof Map ? availability.get(dateStr) : availability[dateStr];
   if (!ranges || ranges.length === 0) {
     return false;
   }
@@ -83,7 +94,6 @@ export const checkDoctorAvailability = (availability, checkDate = new Date()) =>
     const startMinutes = parseTimeToMinutes(parts[0].trim());
     const endMinutes = parseTimeToMinutes(parts[1].trim());
     
-    // Exclusive end check (currentMinutes < endMinutes)
     if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
       return true;
     }
@@ -92,22 +102,10 @@ export const checkDoctorAvailability = (availability, checkDate = new Date()) =>
   return false;
 };
 
-// Check if a specific date and time slot is within the doctor's weekly availability
 export const isSlotWithinAvailability = (availability, dateString, timeString) => {
   if (!availability) return false;
-
-  const dateParts = dateString.split("-");
-  if (dateParts.length !== 3) return false;
   
-  const year = parseInt(dateParts[0]);
-  const month = parseInt(dateParts[1]) - 1;
-  const day = parseInt(dateParts[2]);
-  
-  const dateObj = new Date(year, month, day);
-  const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const dayName = daysOfWeek[dateObj.getDay()];
-  
-  const ranges = availability instanceof Map ? availability.get(dayName) : availability[dayName];
+  const ranges = availability instanceof Map ? availability.get(dateString) : availability[dateString];
   if (!ranges || ranges.length === 0) return false;
   
   const slotMinutes = parseTimeToMinutes(timeString);
@@ -125,3 +123,25 @@ export const isSlotWithinAvailability = (availability, dateString, timeString) =
   
   return false;
 };
+
+export const hasUpcomingAvailability = (availability) => {
+  if (!availability) return false;
+  const todayStr = getKolkataDateString();
+  
+  if (availability instanceof Map) {
+    for (const [dateStr, ranges] of availability.entries()) {
+      if (dateStr >= todayStr && ranges && ranges.length > 0) {
+        return true;
+      }
+    }
+  } else {
+    for (const [dateStr, ranges] of Object.entries(availability)) {
+      if (dateStr >= todayStr && ranges && ranges.length > 0) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
+
+

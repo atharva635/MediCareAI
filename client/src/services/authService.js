@@ -53,3 +53,7 @@ export const resetPassword = async (email, otp, newPassword) => {
 export const loginWithGoogle = async (credential, role) => {
   return await api.post("/auth/google", { credential, role });
 };
+
+export const sendHeartbeat = async () => {
+  return await api.post("/auth/doctor/heartbeat");
+};

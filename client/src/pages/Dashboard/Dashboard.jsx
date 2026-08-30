@@ -60,10 +60,14 @@ const getKolkataTimeInfo = (date = new Date()) => {
 const checkAvailability = (availability) => {
   if (!availability) return false;
   
-  const { dayName, hours, minutes } = getKolkataTimeInfo(new Date());
+  const now = new Date();
+  const options = { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" };
+  const dateStr = new Intl.DateTimeFormat("en-CA", options).format(now);
+  
+  const { hours, minutes } = getKolkataTimeInfo(now);
   const currentMinutes = hours * 60 + minutes;
   
-  const ranges = availability[dayName];
+  const ranges = availability[dateStr];
   if (!ranges || ranges.length === 0) {
     return false;
   }

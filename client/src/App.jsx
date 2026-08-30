@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { getCurrentUser } from "./services/authService";
+import { getCurrentUser, sendHeartbeat } from "./services/authService";
 import { setUser, logout, setLoading } from "./redux/slices/authSlice";
 import AppRoutes from "./routes/AppRoutes";
 import Loader from "./components/Loader";
@@ -8,7 +8,7 @@ import { Toaster } from "react-hot-toast";
 
 function App() {
   const dispatch = useDispatch();
-  const { loading, token } = useSelector((state) => state.auth);
+  const { loading, token, user } = useSelector((state) => state.auth);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -27,6 +27,23 @@ function App() {
     };
     initAuth();
   }, [dispatch, token]);
+
+  useEffect(() => {
+    if (!token || !user || (user.role !== "doctor" && user.role !== "consultant")) return;
+
+    const beat = async () => {
+      try {
+        await sendHeartbeat();
+      } catch (err) {
+        console.error("Heartbeat sync failed:", err);
+      }
+    };
+    beat();
+
+    const interval = setInterval(beat, 30000);
+
+    return () => clearInterval(interval);
+  }, [token, user]);
 
   if (loading) {
     return <Loader />;

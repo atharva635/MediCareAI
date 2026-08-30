@@ -6,81 +6,112 @@ import Navbar from "../../components/Navbar";
 import Loader from "../../components/Loader";
 import DoctorProfileModal from "../../components/DoctorProfileModal";
 import BookingModal from "../../components/BookingModal";
-import { RiStarFill, RiMapPinLine, RiHeartPulseLine, RiDiscussLine, RiSignalTowerLine } from "react-icons/ri";
+import { RiStarFill, RiHeartPulseLine, RiDiscussLine, RiSignalTowerLine } from "react-icons/ri";
 import "./PatientDashboard.css";
 import AIChatbot from "../../components/AIChatbot";
 
-const formatTime = (timeStr) => {
-  try {
-    const parts = timeStr.trim().split(/\s+/);
-    if (parts.length < 2) return timeStr.trim();
-    let [time, modifier] = parts;
-    let [hours, minutes] = time.split(":");
-    hours = hours.padStart(2, "0");
-    minutes = minutes.padStart(2, "0");
-    return `${hours}:${minutes} ${modifier.toUpperCase()}`;
-  } catch (e) {
-    return timeStr.trim();
-  }
+// Helper: Formats YYYY-MM-DD into a human-friendly label "Monday, 31 August 2026"
+const formatDateNicely = (dateStr) => {
+  if (!dateStr) return "";
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dateObj = new Date(y, m - 1, d);
+  return dateObj.toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 };
 
-const parseTimeToMinutes = (timeStr) => {
-  const normalized = formatTime(timeStr);
-  const [time, modifier] = normalized.split(" ");
-  let [hours, minutes] = time.split(":").map(Number);
-  if (modifier === "PM" && hours < 12) {
-    hours += 12;
-  }
-  if (modifier === "AM" && hours === 12) {
-    hours = 0;
-  }
-  return hours * 60 + minutes;
-};
+// Main Helper: Analyzes the doctor's live status, slots, and session heartbeat
+const getDoctorStatusInfo = (doctor) => {
+  const now = new Date();
+  
+  // Format current date in Kolkata: YYYY-MM-DD
+  const kolkataDateStr = now.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  const kolkataTimeStr = now.toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", hour12: false });
+  const [curH, curM] = kolkataTimeStr.split(":").map(Number);
+  const currentMinutes = curH * 60 + curM;
 
-const getKolkataTimeInfo = (date = new Date()) => {
-  const options = {
-    timeZone: "Asia/Kolkata",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    weekday: "long"
+  const parseToMinutesLocal = (tStr) => {
+    const [time, modifier] = tStr.split(" ");
+    let [hours, minutes] = time.split(":").map(Number);
+    if (modifier === "PM" && hours < 12) hours += 12;
+    if (modifier === "AM" && hours === 12) hours = 0;
+    return hours * 60 + minutes;
   };
-  const formatter = new Intl.DateTimeFormat("en-US", options);
-  const parts = formatter.formatToParts(date);
-  const info = {};
-  for (const part of parts) {
-    info[part.type] = part.value;
-  }
-  return {
-    dayName: info.weekday,
-    hours: parseInt(info.hour),
-    minutes: parseInt(info.minute)
-  };
-};
 
-const checkAvailability = (availability) => {
-  if (!availability) return false;
-  
-  const { dayName, hours, minutes } = getKolkataTimeInfo(new Date());
-  const currentMinutes = hours * 60 + minutes;
-  
-  const ranges = availability[dayName];
-  if (!ranges || ranges.length === 0) {
-    return false;
-  }
-  
-  for (const range of ranges) {
-    const parts = range.split("-");
-    if (parts.length !== 2) continue;
-    const startMinutes = parseTimeToMinutes(parts[0].trim());
-    const endMinutes = parseTimeToMinutes(parts[1].trim());
-    
-    if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
-      return true;
+  // Heartbeat online session check (90s tolerance)
+  const isOnline = doctor.isOnline && doctor.lastHeartbeat && 
+    (now - new Date(doctor.lastHeartbeat) <= 90000);
+
+  const availability = doctor.availability || {};
+  const rawAvail = availability instanceof Map ? Object.fromEntries(availability) : availability;
+
+  const slots = [];
+  Object.entries(rawAvail).forEach(([dateKey, ranges]) => {
+    if (!ranges) return;
+    ranges.forEach(range => {
+      const parts = range.split("-").map(p => p.trim());
+      if (parts.length !== 2) return;
+      const startMin = parseToMinutesLocal(parts[0]);
+      const endMin = parseToMinutesLocal(parts[1]);
+
+      let isExpired = false;
+      if (dateKey < kolkataDateStr) {
+        isExpired = true;
+      } else if (dateKey === kolkataDateStr) {
+        isExpired = currentMinutes >= endMin;
+      }
+
+      if (!isExpired) {
+        slots.push({
+          dateKey,
+          range,
+          startMin,
+          endMin,
+          startTimeStr: parts[0],
+          endTimeStr: parts[1],
+          isToday: dateKey === kolkataDateStr,
+          isLiveRightNow: dateKey === kolkataDateStr && currentMinutes >= startMin && currentMinutes < endMin
+        });
+      }
+    });
+  });
+
+  // Sort slots chronologically
+  slots.sort((a, b) => {
+    if (a.dateKey !== b.dateKey) return a.dateKey.localeCompare(b.dateKey);
+    return a.startMin - b.startMin;
+  });
+
+  const currentLiveSlot = slots.find(s => s.isLiveRightNow);
+
+  if (currentLiveSlot) {
+    if (isOnline) {
+      return {
+        status: "LIVE_NOW",
+        activeSlot: currentLiveSlot,
+        allSlots: slots,
+        onlineSince: doctor.sessionStartedAt ? new Date(doctor.sessionStartedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "Recently",
+        consultingUntil: currentLiveSlot.endTimeStr
+      };
+    } else {
+      return {
+        status: "SCHEDULED",
+        activeSlot: currentLiveSlot,
+        allSlots: slots
+      };
     }
   }
-  
-  return false;
+
+  const nextSlot = slots[0];
+  return {
+    status: "OFFLINE",
+    activeSlot: null,
+    nextSlot: nextSlot || null,
+    allSlots: slots
+  };
 };
 
 export default function PatientDashboard() {
@@ -92,6 +123,8 @@ export default function PatientDashboard() {
 
   useEffect(() => {
     loadOnlineDoctors();
+    const interval = setInterval(loadOnlineDoctors, 15000); // Check/update status every 15s
+    return () => clearInterval(interval);
   }, []);
 
   const loadOnlineDoctors = async () => {
@@ -105,15 +138,33 @@ export default function PatientDashboard() {
     }
   };
 
-  // Helper to get stable distance based on Mongoose ObjectId
   const getStableDistance = (id) => {
     if (!id) return "2.5";
     const sum = id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
     return ((sum % 4) + 1.2).toFixed(1);
   };
 
-  const onlineDoctors = doctors.filter((doc) => checkAvailability(doc.availability));
-  const offlineDoctors = doctors.filter((doc) => !checkAvailability(doc.availability));
+  // Process doctors live availability information
+  const liveDoctorsList = [];
+  const bookingSchedulesList = [];
+
+  doctors.forEach(doc => {
+    const info = getDoctorStatusInfo(doc);
+    
+    // Skip rendering if they have absolutely no upcoming or live slots
+    if (info.allSlots.length === 0) return;
+
+    const decoratedDoctor = {
+      ...doc,
+      statusInfo: info
+    };
+
+    if (info.status === "LIVE_NOW") {
+      liveDoctorsList.push(decoratedDoctor);
+    } else {
+      bookingSchedulesList.push(decoratedDoctor);
+    }
+  });
 
   if (loading) {
     return <Loader />;
@@ -138,25 +189,26 @@ export default function PatientDashboard() {
             </div>
           </div>
 
-          {/* Section 1: Available Now */}
+          {/* Section 1: LIVE NOW */}
           <div className="dashboard-discovery-section">
             <div className="section-header-row">
               <h2 className="section-title">Attending Doctors Available Now</h2>
               <span className="live-count-badge" style={{ background: "rgba(16, 185, 129, 0.15)", color: "#10b981" }}>
-                🟢 {onlineDoctors.length} Online
+                🟢 {liveDoctorsList.length} Live Now
               </span>
             </div>
 
-            {onlineDoctors.length === 0 ? (
-              <div className="empty-doctors-state glass-panel" style={{ padding: "30px", textAlign: "center", color: "#64748b" }}>
+            {liveDoctorsList.length === 0 ? (
+              <div className="empty-doctors-state glass-panel" style={{ padding: "35px", textAlign: "center", color: "#64748b" }}>
                 <RiHeartPulseLine className="pulse-icon-empty" style={{ fontSize: "2.5rem", color: "#475569", marginBottom: "10px" }} />
-                <h3>No Doctors Online Now</h3>
-                <p>No clinicians are currently active. Please check "Book for Later" below or check back shortly.</p>
+                <h3>No Doctors Online Right Now</h3>
+                <p>No clinicians are currently active on a live session. Please check "Book for Later" below or check back shortly.</p>
               </div>
             ) : (
               <div className="doctors-discovery-grid">
-                {onlineDoctors.map((doc) => {
+                {liveDoctorsList.map((doc) => {
                   const distance = getStableDistance(doc._id);
+                  const statusInfo = doc.statusInfo;
                   return (
                     <div key={doc._id} className="patient-doctor-card glass-panel animate-slide">
                       <div className="doctor-avatar-box">👨‍⚕️</div>
@@ -170,7 +222,7 @@ export default function PatientDashboard() {
                           fontSize: "0.75rem",
                           fontWeight: "700"
                         }}>
-                          🟢 AVAILABLE NOW
+                          🟢 LIVE NOW
                         </span>
                         <h3>{doc.fullName}</h3>
                         <p className="card-spec-text">{doc.specialization || "General Medicine"}</p>
@@ -190,18 +242,21 @@ export default function PatientDashboard() {
                           <span className="card-fee">₹{doc.consultationFee || 299}</span>
                         </div>
 
-                        <div className="card-weekly-avail border-top" style={{ padding: "8px 0", fontSize: "0.75rem" }}>
-                          <span style={{ color: "#94a3b8", fontWeight: "700" }}>Weekly Schedule:</span>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "4px" }}>
-                            {Object.entries(doc.availability || {}).map(([day, ranges]) => {
-                              if (!ranges || ranges.length === 0) return null;
-                              return (
-                                <div key={day} style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1" }}>
-                                  <span>{day}</span>
-                                  <span style={{ color: "#38bdf8", fontWeight: "600" }}>{ranges.join(", ")}</span>
-                                </div>
-                              );
-                            })}
+                        {/* Attendance slot information */}
+                        <div className="card-live-details" style={{ marginTop: "12px", padding: "10px", background: "rgba(16, 185, 129, 0.05)", border: "1px solid rgba(16, 185, 129, 0.15)", borderRadius: "8px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", color: "#94a3b8", fontWeight: "700" }}>
+                            <span>TODAY'S ATTENDING SESSION</span>
+                            <span style={{ color: "#10b981" }}>● LIVE</span>
+                          </div>
+                          <div style={{ fontSize: "0.85rem", color: "#f1f5f9", fontWeight: "700", marginTop: "4px" }}>
+                            📅 {formatDateNicely(statusInfo.activeSlot.dateKey)}
+                          </div>
+                          <div style={{ fontSize: "0.9rem", color: "#2dd4bf", fontWeight: "700", marginTop: "2px" }}>
+                            🕐 {statusInfo.activeSlot.startTimeStr} ─── {statusInfo.activeSlot.endTimeStr}
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "6px", fontSize: "0.75rem", color: "#cbd5e1" }}>
+                            <span>Online since: <strong>{statusInfo.onlineSince}</strong></span>
+                            <span>Consulting until: <strong>{statusInfo.consultingUntil}</strong></span>
                           </div>
                         </div>
 
@@ -230,37 +285,39 @@ export default function PatientDashboard() {
             )}
           </div>
 
-          {/* Section 2: Book for Later */}
+          {/* Section 2: Book for Later / Consultation Schedules */}
           <div className="dashboard-discovery-section" style={{ marginTop: "40px" }}>
             <div className="section-header-row">
-              <h2 className="section-title">📅 Book for Later / Consultation Schedules</h2>
+              <h2 className="section-title">📅 Upcoming Schedules / Book for Later</h2>
               <span className="live-count-badge" style={{ background: "rgba(56, 189, 248, 0.15)", color: "#38bdf8" }}>
                 Accepting Bookings
               </span>
             </div>
 
-            {offlineDoctors.length === 0 ? (
+            {bookingSchedulesList.length === 0 ? (
               <div className="empty-doctors-state glass-panel" style={{ padding: "30px", textAlign: "center", color: "#64748b" }}>
-                <p>No other clinicians are registered under the booking schedules.</p>
+                <p>No other clinicians currently have future availability schedules configured.</p>
               </div>
             ) : (
               <div className="doctors-discovery-grid">
-                {offlineDoctors.map((doc) => {
+                {bookingSchedulesList.map((doc) => {
                   const distance = getStableDistance(doc._id);
+                  const statusInfo = doc.statusInfo;
+                  const isScheduled = statusInfo.status === "SCHEDULED";
                   return (
                     <div key={doc._id} className="patient-doctor-card glass-panel animate-slide">
                       <div className="doctor-avatar-box" style={{ background: "rgba(255,255,255,0.03)" }}>👨‍⚕️</div>
                       <div className="doctor-card-content">
                         <span className="card-avail-badge" style={{
-                          background: "rgba(245, 158, 11, 0.15)",
-                          color: "#f59e0b",
-                          border: "1px solid rgba(245, 158, 11, 0.3)",
+                          background: isScheduled ? "rgba(245, 158, 11, 0.15)" : "rgba(56, 189, 248, 0.15)",
+                          color: isScheduled ? "#f59e0b" : "#38bdf8",
+                          border: isScheduled ? "1px solid rgba(245, 158, 11, 0.3)" : "1px solid rgba(56, 189, 248, 0.3)",
                           padding: "4px 8px",
                           borderRadius: "6px",
                           fontSize: "0.75rem",
                           fontWeight: "700"
                         }}>
-                          📅 BOOKING ACTIVE
+                          {isScheduled ? "🟡 SCHEDULED" : "📅 AVAILABLE LATER"}
                         </span>
                         <h3>{doc.fullName}</h3>
                         <p className="card-spec-text">{doc.specialization || "General Medicine"}</p>
@@ -280,19 +337,45 @@ export default function PatientDashboard() {
                           <span className="card-fee">₹{doc.consultationFee || 299}</span>
                         </div>
 
-                        <div className="card-weekly-avail border-top" style={{ padding: "8px 0", fontSize: "0.75rem" }}>
-                          <span style={{ color: "#94a3b8", fontWeight: "700" }}>Weekly Schedule:</span>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "4px" }}>
-                            {Object.entries(doc.availability || {}).map(([day, ranges]) => {
-                              if (!ranges || ranges.length === 0) return null;
-                              return (
-                                <div key={day} style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1" }}>
-                                  <span>{day}</span>
-                                  <span style={{ color: "#38bdf8", fontWeight: "600" }}>{ranges.join(", ")}</span>
+                        {/* Upcoming timings information */}
+                        <div className="card-live-details" style={{ marginTop: "12px", padding: "10px", background: isScheduled ? "rgba(245, 158, 11, 0.03)" : "rgba(148, 163, 184, 0.05)", border: isScheduled ? "1px solid rgba(245, 158, 11, 0.15)" : "1px solid rgba(148, 163, 184, 0.15)", borderRadius: "8px" }}>
+                          {isScheduled ? (
+                            <>
+                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", color: "#94a3b8", fontWeight: "700" }}>
+                                <span>TODAY'S SCHEDULED SESSION</span>
+                                <span style={{ color: "#f59e0b" }}>WAITING</span>
+                              </div>
+                              <div style={{ fontSize: "0.85rem", color: "#f1f5f9", fontWeight: "700", marginTop: "4px" }}>
+                                📅 {formatDateNicely(statusInfo.activeSlot.dateKey)}
+                              </div>
+                              <div style={{ fontSize: "0.9rem", color: "#cbd5e1", fontWeight: "700", marginTop: "2px" }}>
+                                🕐 {statusInfo.activeSlot.startTimeStr} ─── {statusInfo.activeSlot.endTimeStr}
+                              </div>
+                              <div style={{ marginTop: "6px", fontSize: "0.75rem", color: "#f59e0b", fontStyle: "italic", fontWeight: "600" }}>
+                                ⚠️ Doctor hasn't joined yet
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              {statusInfo.nextSlot ? (
+                                <>
+                                  <div style={{ fontSize: "0.75rem", color: "#94a3b8", fontWeight: "700" }}>
+                                    NEXT AVAILABLE CONSULTATION
+                                  </div>
+                                  <div style={{ fontSize: "0.85rem", color: "#f1f5f9", fontWeight: "700", marginTop: "4px" }}>
+                                    📅 {formatDateNicely(statusInfo.nextSlot.dateKey)}
+                                  </div>
+                                  <div style={{ fontSize: "0.9rem", color: "#38bdf8", fontWeight: "700", marginTop: "2px" }}>
+                                    🕐 {statusInfo.nextSlot.startTimeStr} ─── {statusInfo.nextSlot.endTimeStr}
+                                  </div>
+                                </>
+                              ) : (
+                                <div style={{ fontSize: "0.75rem", color: "#64748b", fontStyle: "italic" }}>
+                                  No upcoming slots.
                                 </div>
-                              );
-                            })}
-                          </div>
+                              )}
+                            </>
+                          )}
                         </div>
 
                         <div className="card-actions-row border-top">

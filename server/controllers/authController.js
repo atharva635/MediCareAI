@@ -1,7 +1,7 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import generateToken from "../utils/generateToken.js";
-import { checkDoctorAvailability } from "../utils/timeHelper.js";
+import { checkDoctorAvailability, hasUpcomingAvailability } from "../utils/timeHelper.js";
 import OTP from "../models/OTP.js";
 import { sendEmailNotification } from "../services/emailService.js";
 
@@ -189,6 +189,8 @@ export const login = async (req, res) => {
     // Set online status if doctor
     if (user.role === "doctor") {
       user.isOnline = true;
+      user.sessionStartedAt = new Date();
+      user.lastHeartbeat = new Date();
     }
 
     // Increment session tokenVersion to invalidate previous device log-ins
@@ -285,22 +287,27 @@ export const getConsultants = async (req, res) => {
 // ================= GET DOCTORS =================
 export const getDoctors = async (req, res) => {
   try {
+    const now = new Date();
     const doctors = await User.find({ role: "doctor" }).select("-password");
     
-    // Filter doctors who have at least one active availability range on any day
-    const availableDoctors = doctors.filter((doctor) => {
-      const avail = doctor.availability;
-      if (!avail) return false;
-      const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-      return DAYS.some(day => {
-        const ranges = avail instanceof Map ? avail.get(day) : avail[day];
-        return ranges && ranges.length > 0;
-      });
-    });
+    // Auto-offline check & filter doctors who have upcoming availability
+    const processedDoctors = [];
+    for (const doctor of doctors) {
+      // Dynamic offline checking
+      if (doctor.isOnline && doctor.lastHeartbeat && (now - doctor.lastHeartbeat > 90000)) {
+        doctor.isOnline = false;
+        await doctor.save();
+      }
+      
+      // Keep in patient list only if they have upcoming schedules
+      if (hasUpcomingAvailability(doctor.availability)) {
+        processedDoctors.push(doctor);
+      }
+    }
 
     return res.status(200).json({
       success: true,
-      doctors: availableDoctors,
+      doctors: processedDoctors,
     });
   } catch (error) {
     console.error("Get Doctors Error:", error);
@@ -607,8 +614,10 @@ export const googleLogin = async (req, res) => {
 
     if (user) {
       // User exists - merge account and auto-verify
-      if (!user.isVerified) {
-        user.isVerified = true;
+      if (user.role === "doctor") {
+        user.isOnline = true;
+        user.sessionStartedAt = new Date();
+        user.lastHeartbeat = new Date();
       }
       user.tokenVersion = (user.tokenVersion || 0) + 1;
       await user.save();
@@ -643,6 +652,36 @@ export const googleLogin = async (req, res) => {
     });
   } catch (error) {
     console.error("Google Login Error:", error);
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+// ================= DOCTOR HEARTBEAT =================
+export const doctorHeartbeat = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    user.lastHeartbeat = new Date();
+    user.isOnline = true;
+    user.lastSeen = new Date();
+
+    if (!user.sessionStartedAt) {
+      user.sessionStartedAt = new Date();
+    }
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Heartbeat processed successfully",
+      isOnline: user.isOnline,
+      lastHeartbeat: user.lastHeartbeat,
+    });
+  } catch (error) {
+    console.error("Doctor Heartbeat Error:", error);
     return res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };

@@ -51,6 +51,15 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  lastHeartbeat: {
+    type: Date,
+  },
+  sessionStartedAt: {
+    type: Date,
+  },
+  lastSeen: {
+    type: Date,
+  },
   mobile: {
     type: String,
     unique: true,

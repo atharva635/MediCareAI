@@ -478,7 +478,7 @@ export const getAvailableSlots = async (req, res) => {
       });
     }
 
-    // Determine day of the week
+    // Determine day of the week for client information
     const dateParts = date.split("-");
     if (dateParts.length !== 3) {
       return res.status(400).json({
@@ -494,16 +494,15 @@ export const getAvailableSlots = async (req, res) => {
     const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     const dayName = daysOfWeek[dateObj.getDay()];
 
-    // Get doctor's availability for that dayName
+    // Get doctor's availability for that specific date key
     const availabilityMap = doctor.availability || new Map();
-    // Mongoose Map support get()
-    const ranges = availabilityMap instanceof Map ? availabilityMap.get(dayName) : availabilityMap[dayName];
+    const ranges = availabilityMap instanceof Map ? availabilityMap.get(date) : availabilityMap[date];
 
     if (!ranges || ranges.length === 0) {
       return res.json({
         success: true,
         availableSlots: [],
-        message: `No availability set for ${dayName}`,
+        message: `No availability set for ${date}`,
       });
     }
 

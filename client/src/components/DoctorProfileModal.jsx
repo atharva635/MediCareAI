@@ -1,6 +1,43 @@
 import { RiCloseLine, RiStarFill, RiMapPinLine, RiBriefcaseLine, RiMoneyRupeeCircleLine, RiDiscussLine } from "react-icons/ri";
 import "./DoctorProfileModal.css";
 
+const formatDateNicely = (dateStr) => {
+  if (!dateStr) return "";
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dateObj = new Date(y, m - 1, d);
+  return dateObj.toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+};
+
+const isSlotExpired = (dateKey, range) => {
+  const now = new Date();
+  const kolkataDate = now.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  if (dateKey < kolkataDate) return true;
+
+  if (dateKey === kolkataDate) {
+    const kolkataTime = now.toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", hour12: false });
+    const [curH, curM] = kolkataTime.split(":").map(Number);
+    const currentMinutes = curH * 60 + curM;
+
+    const parts = range.split("-").map(p => p.trim());
+    const parseToMinutesLocal = (tStr) => {
+      const [time, modifier] = tStr.split(" ");
+      let [hours, minutes] = time.split(":").map(Number);
+      if (modifier === "PM" && hours < 12) hours += 12;
+      if (modifier === "AM" && hours === 12) hours = 0;
+      return hours * 60 + minutes;
+    };
+    const endMin = parseToMinutesLocal(parts[1]);
+    return currentMinutes >= endMin;
+  }
+
+  return false;
+};
+
 export default function DoctorProfileModal({ doctor, onClose, onConsult }) {
   if (!doctor) return null;
 
@@ -62,19 +99,26 @@ export default function DoctorProfileModal({ doctor, onClose, onConsult }) {
           </div>
 
           <div className="doc-profile-section border-top">
-            <h3>Weekly Consultation Hours</h3>
+            <h3>Consultation Schedules</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "0.88rem", marginTop: "8px" }}>
-              {Object.entries(doctor.availability || {}).map(([day, ranges]) => {
-                if (!ranges || ranges.length === 0) return null;
-                return (
-                  <div key={day} style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1" }}>
-                    <span style={{ fontWeight: "600" }}>{day}:</span>
-                    <span style={{ color: "#2dd4bf", fontWeight: "700" }}>{ranges.join(", ")}</span>
-                  </div>
-                );
-              })}
-              {(!doctor.availability || Object.values(doctor.availability).every(r => !r || r.length === 0)) && (
-                <p style={{ color: "#94a3b8", fontStyle: "italic" }}>No specific consulting hours set.</p>
+              {Object.entries(doctor.availability || {})
+                .map(([dateKey, ranges]) => {
+                  // Filter out expired ranges
+                  const activeRanges = ranges ? ranges.filter(r => !isSlotExpired(dateKey, r)) : [];
+                  return [dateKey, activeRanges];
+                })
+                .filter(([_, ranges]) => ranges.length > 0)
+                .sort(([d1], [d2]) => d1.localeCompare(d2))
+                .map(([dateKey, ranges]) => {
+                  return (
+                    <div key={dateKey} style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1" }}>
+                      <span style={{ fontWeight: "600" }}>{formatDateNicely(dateKey)}:</span>
+                      <span style={{ color: "#2dd4bf", fontWeight: "700" }}>{ranges.join(", ")}</span>
+                    </div>
+                  );
+                })}
+              {(!doctor.availability || Object.entries(doctor.availability).every(([dateKey, ranges]) => !ranges || ranges.filter(r => !isSlotExpired(dateKey, r)).length === 0)) && (
+                <p style={{ color: "#94a3b8", fontStyle: "italic" }}>No upcoming consulting hours set.</p>
               )}
             </div>
           </div>

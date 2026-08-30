@@ -11,7 +11,8 @@ import {
   resendOtp,
   forgotPassword,
   resetPassword,
-  googleLogin
+  googleLogin,
+  doctorHeartbeat
 } from "../controllers/authController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 
@@ -24,6 +25,7 @@ router.get("/consultants", authMiddleware, getConsultants);
 router.get("/doctors", authMiddleware, getDoctors);
 router.post("/logout", authMiddleware, logoutUser);
 router.put("/profile", authMiddleware, updateProfile);
+router.post("/doctor/heartbeat", authMiddleware, doctorHeartbeat);
 
 // OTP & Authentication Updates
 router.post("/verify-otp", verifyOtp);
