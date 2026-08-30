@@ -296,6 +296,16 @@
   box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
 }
 
+.slot-pill.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.01) !important;
+  border-color: rgba(255, 255, 255, 0.03) !important;
+  color: #64748b !important;
+  box-shadow: none !important;
+  pointer-events: none;
+}
+
 /* Billing Summary Styling */
 .billing-summary-box {
   background: rgba(15, 23, 42, 0.35);

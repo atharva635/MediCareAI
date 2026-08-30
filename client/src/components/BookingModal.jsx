@@ -18,6 +18,27 @@ import {
 } from "../services/appointmentService";
 import "./BookingModal.css";
 
+const parseTimeToMinutes = (timeStr) => {
+  if (!timeStr) return 0;
+  const [time, modifier] = timeStr.split(" ");
+  let [hours, minutes] = time.split(":").map(Number);
+  if (modifier === "PM" && hours < 12) hours += 12;
+  if (modifier === "AM" && hours === 12) hours = 0;
+  return hours * 60 + minutes;
+};
+
+const getKolkataDateStr = () => {
+  const options = { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" };
+  return new Intl.DateTimeFormat("en-CA", options).format(new Date());
+};
+
+const getKolkataMinutes = () => {
+  const options = { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false };
+  const str = new Intl.DateTimeFormat("en-US", options).format(new Date());
+  const [h, m] = str.split(":").map(Number);
+  return h * 60 + m;
+};
+
 export default function BookingModal({ doctor, onClose }) {
   const navigate = useNavigate();
   const [step, setStep] = useState("select"); // "select", "symptoms", "success"
@@ -270,16 +291,24 @@ export default function BookingModal({ doctor, onClose }) {
                   </div>
                 ) : (
                   <div className="slots-grid">
-                    {slots.map((slot) => (
-                      <button
-                        key={slot}
-                        type="button"
-                        className={`slot-pill ${selectedTime === slot ? "selected" : ""}`}
-                        onClick={() => setSelectedTime(slot)}
-                      >
-                        {slot}
-                      </button>
-                    ))}
+                    {(() => {
+                      const kolkataToday = getKolkataDateStr();
+                      const currentMinutes = getKolkataMinutes();
+                      return slots.map((slot) => {
+                        const isPast = selectedDate === kolkataToday && parseTimeToMinutes(slot) <= currentMinutes;
+                        return (
+                          <button
+                            key={slot}
+                            type="button"
+                            disabled={isPast}
+                            className={`slot-pill ${selectedTime === slot ? "selected" : ""} ${isPast ? "disabled" : ""}`}
+                            onClick={() => setSelectedTime(slot)}
+                          >
+                            {slot}
+                          </button>
+                        );
+                      });
+                    })()}
                   </div>
                 )}
               </div>
