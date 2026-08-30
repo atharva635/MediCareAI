@@ -695,7 +695,11 @@ The client project includes a `vercel.json` file. To deploy:
 
 ## 31. License
 
-License has not been specified yet.
+© 2026 Atharva Gupta. All rights reserved.
+
+This project is provided for demonstration and educational purposes.
+
+The source code may not be copied, modified, distributed, or used commercially without explicit permission from the author.
 
 ---
 
