@@ -6,8 +6,8 @@
 
 .doctor-appointments-main-area {
   flex: 1;
-  width: calc(100% - 280px);
-  margin-left: 280px;
+  width: calc(100% - 260px);
+  margin-left: 260px;
   min-width: 0;
 }
 

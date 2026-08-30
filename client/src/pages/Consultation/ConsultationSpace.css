@@ -6,8 +6,8 @@
 }
 
 .consult-main-area {
-  margin-left: 208px; /* sidebar width */
-  width: calc(100% - 208px);
+  margin-left: 260px; /* sidebar width */
+  width: calc(100% - 260px);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
